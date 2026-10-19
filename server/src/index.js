@@ -1,10 +1,23 @@
 import fs from "fs";
 import path from "path";
 import express from "express";
+import { Station } from "./station.js";
+import { loadCatalogue } from "./catalogue.js";
 
 const app = express();
+const station = new Station({ catalog: loadCatalogue() });
 app.get("/api/health", (req, res) => {
   res.json({ ok: true });
+});
+
+app.get('/api/time', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ serverTime: station.now() });
+});
+
+app.get('/api/now', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(station.snapshot());
 });
 
 const dist = path.resolve(import.meta.dirname, '../../client/dist');
