@@ -20,22 +20,91 @@ body {
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
-.home {
-  min-height: 100vh;
+.app {
+  width: min(100%, 600px);
+  margin: 0 auto;
+  padding: 32px 16px 48px;
   display: grid;
-  place-content: center;
-  text-align: center;
-  padding: 16px;
+  gap: 20px;
 }
 
-.home h1 {
+.hero {
+  text-align: center;
+}
+
+.hero h1 {
   margin: 0;
-  font-size: clamp(2rem, 8vw, 4rem);
+  font-size: clamp(2rem, 8vw, 3.2rem);
   letter-spacing: -0.02em;
 }
 
-.tagline,
-.api-status {
-  margin: 8px 0 0;
+.tagline {
+  margin: 6px 0 0;
   color: var(--muted);
+}
+
+.card {
+  background: var(--muted);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 21px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.song-title {
+  margin: 0 0 4px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.song-progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin-top: 20px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--line);
+  accent-color: var(--accent);
+}
+
+.song-progress::-webkit-progress-bar {
+  background: var(--line);
+}
+
+.song-progress::-webkit-progress-value {
+  background: var(--accent);
+}
+
+.song-progress::-moz-progress-bar {
+  background: var(--accent);
+}
+
+.times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  margin: 0;
+  min-height: 1.4em;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
