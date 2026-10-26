@@ -1,7 +1,9 @@
 import { useSyncedPlayer } from '../hooks/useSyncedPlayer';
+import { useListenerCount } from '../hooks/useListenerCount';
 
 export default function YTPlayer({ station, nowMs }) {
     const { hostRef, enabled, status, tuneIn } = useSyncedPlayer({ station, nowMs });
+    const { count: listenerCount, online: listenerCountOnline } = useListenerCount(enabled);
     const failed = status.startsWith('Error');
 
     return (
@@ -18,6 +20,15 @@ export default function YTPlayer({ station, nowMs }) {
       <p className="player-status" role="status" aria-live="polite">
         {status}
       </p>
+      {enabled && (
+        <p className="listener-count" aria-live="polite" aria-atomic="true">
+          {listenerCountOnline && listenerCount !== null
+            ? `${listenerCount.toLocaleString()} listening now`
+            : listenerCount === null
+              ? 'Connecting to listener count...'
+              : 'Listener count unavailable'}
+        </p>
+      )}
     </section>
   );
 }

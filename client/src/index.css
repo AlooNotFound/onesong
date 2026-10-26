@@ -160,3 +160,11 @@ body {
   font-size: 0.9rem;
   text-align: center;
 }
+
+.listener-count {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
