@@ -42,7 +42,13 @@ export function createListenerReg({
         return lastSeen.size;
     }
 
-    return { heartbeat, count };
+    function isActive(clientId, currTime= now(), ttl = ttl) {
+        prune();
+        const timestamp = lastSeen.get(clientId);
+        return timestamp !== undefined && currTime - timestamp <= ttl;
+    }
+
+    return { heartbeat, count, isActive };
 }
 
 export const createListenerRegistry = ({
