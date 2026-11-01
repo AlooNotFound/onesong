@@ -168,3 +168,79 @@ body {
   font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
 }
+
+..skip-card {
+  display: grid;
+  gap: 16px;
+}
+
+.skip-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.skip-heading .eyebrow {
+  margin-bottom: 6px;
+}
+
+.skip-title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.skip-count {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.skip-progress {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.skip-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 180ms ease;
+}
+
+.skip-desc,
+.skip-msg {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.skip-btn {
+  width: 100%;
+  padding: 13px 16px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.skip-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.skip-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.skip-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

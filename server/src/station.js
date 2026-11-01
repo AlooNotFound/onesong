@@ -36,6 +36,17 @@ export class Station {
             this.#start(this.curr.endsAt);
         }
     }
+
+    advanceIfCurr(expectedKey) {
+        this.tick();
+        const key = `${this.songNumber}:${this.curr.startedAt}`;
+        if (key !== expectedKey) {
+            return false;
+        }
+        this.#start(this.curr.endsAt);
+        return true;
+    }
+
     snapshot() {
         this.tick();
         const serverTime = this.now();

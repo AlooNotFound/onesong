@@ -5,10 +5,10 @@ export function createSkipSrv({
     getStation,
     getActiveListenerCount,
     isListenerActive,
-    advanceStation,
+    advStation,
     ttl = default_ttl_ms,
 }) {
-    if ( typeof getStation !== 'function' || typeof getActiveListenerCount !== 'function' || typeof isListenerActive !== 'function' || typeof advanceStation !== 'function') {
+    if ( typeof getStation !== 'function' || typeof getActiveListenerCount !== 'function' || typeof isListenerActive !== 'function' || typeof advStation !== 'function') {
         throw new Error('Missing required params');
     }
     if (!Number.isFinite(ttl) || ttl <= 0) {
@@ -90,7 +90,7 @@ export function createSkipSrv({
         advancing = true;
 
         try {
-            const advanced = await advanceStation(currKey);
+            const advanced = await advStation(currKey);
             if (!advanced) {
                 syncStation();
                 return { success: false, reason: 'station changed', ...snapshot() };

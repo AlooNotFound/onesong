@@ -4,11 +4,18 @@ import express from "express";
 import { Station } from "./station.js";
 import { loadCatalogue } from "./catalogue.js";
 import { createListenerRegistry, isValidListenerId } from "./listeners.js";
+import { createSkipSrv } from "./skipVotes.js";
 
 const app = express();
 app.use(express.json({ limit: '16kb' }));
 const station = new Station({ catalog: loadCatalogue() });
 const listenerReg = createListenerRegistry();
+const skipSrv = createSkipSrv({
+  getStation: () => station.snapshot(),
+  getActiveListenerCount: () => listenerReg.count(),
+  isListenerActive: (clientId) => listenerReg.isActive(clientId),
+  advStation: (expectedKey) => station.advanceIfCurr(expectedKey),
+})
 
 app.get("/api/health", (req, res) => {
   res.json({ ok: true });
@@ -38,6 +45,34 @@ app.get('/api/listeners', (_req, res) => {
   res.set('Cache-Control', 'no-store');
 
   return res.json({ count: listenerReg.count(), serverTime: Date.now() });
+});
+
+app.get('/api/skip-vote', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const curr = skipSrv.snapshot();
+  return res.json({
+    stationKey: curr.stationKey ? curr.stationKey : null, ...skipSrv.snapshot(),
+  });
+});
+
+app.post('/api/skip-vote', async (req, res, next) => {
+  try {
+    const { clientId, stationKey } = req.body ?? {};
+    if ( typeof clientId !== 'string' || !isValidListenerId(clientId) ) {
+      return res.status(400).json({ error: 'Invalid listener ID' });
+    }
+    if ( typeof stationKey !== 'string' || !/^\d+:\d+$/.test(stationKey) ) {
+      return res.status(400).json({ error: 'Invalid station key' });
+    }
+    const res = await skipSrv.submitVote(clientId, stationKey);
+    res.set('Cache-Control', 'no-store');
+    if (res.error) {
+      return res.status(400).json({ error: res.error });
+    }
+    return res.json({ ...res, serverTime: Date.now() });
+  } catch (err) {
+    next(err);
+  }
 });
 
 const dist = path.resolve(import.meta.dirname, '../../client/dist');

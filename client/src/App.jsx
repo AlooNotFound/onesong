@@ -4,6 +4,7 @@ import { useStation } from './hooks/useStation.js';
 import { useServerNow } from './hooks/useServerNow.js';
 import NowPlaying from './components/NowPlaying.jsx';
 import YouTubePlayer from './components/YouTubePlayer.jsx';
+import SkipVote from './components/SkipVote.jsx';
 
 export default function App() {
   const clock = useServerClock();
@@ -19,6 +20,7 @@ export default function App() {
 
       <NowPlaying station={station} nowMs={nowMs}/>
       <YouTubePlayer station={station} nowMs={nowMs}/>
+      <SkipVote station={station} />
 
       <p className="status" role="status" aria-live="polite">
         {error ? 'Lost the signal. Retrying…' : ''}
