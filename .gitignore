@@ -7,3 +7,4 @@ dist/
 serviceAccountKey.json
 *.conf
 package-lock.json
+server/data/audio/

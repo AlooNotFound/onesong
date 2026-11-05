@@ -6,10 +6,12 @@ import { loadCatalogue } from "./catalogue.js";
 import { createListenerRegistry, isValidListenerId } from "./listeners.js";
 import { createSkipSrv } from "./skipVotes.js";
 import subRouter from "./routes/submissions.js";
+import audioRouter from "./routes/audio.js";
 
 const app = express();
 app.use(express.json({ limit: '16kb' }));
 app.use('/api/submissions', subRouter);
+app.use('/api/audio', audioRouter);
 const station = new Station({ catalog: loadCatalogue() });
 const listenerReg = createListenerRegistry();
 const skipSrv = createSkipSrv({
