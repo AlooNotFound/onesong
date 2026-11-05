@@ -1,6 +1,20 @@
 import {useState} from "react";
 import { auth } from "../lib/firebase";
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function getSub(subId, token) {
+    const resp = await fetch(`/api/submissions/${subId}`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+        throw new Error(data.error || 'Failed to fetch submission.');
+    }
+    return data.sub;
+}
+
 export default function SubmitSrc() {
     const [url, setUrl] = useState('');
     const [status, setStatus] = useState('idle');
@@ -10,7 +24,7 @@ export default function SubmitSrc() {
     async function handleSubmit(e) {
         e.preventDefault();
         if (!url.trim() || status === 'loading') return;
-        const user = auth.currentUser;
+        const user = auth.currUser;
         if (!user) {
             setStatus('error');
             setMessage('You must be logged in to submit a source.');
@@ -27,18 +41,37 @@ export default function SubmitSrc() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({ url }),
+                body: JSON.stringify({ url: url.trim() }),
             });
             const data = await resp.json();
             if (!resp.ok) {
                 throw new Error(data.error || 'Failed to submit source.');
             }
-            setSub(data);
-        } catch (error) {
+            setSub(data.sub);
+            setMessage('Submission queued. Processing...');
+            for (let i = 0; i < 60; i++) {
+                await sleep(2000);
+                const curr = await getSub( data.sub.id, token );
+                setSub(curr);
+                if (curr.status === 'completed') {
+                    setStatus('success');
+                    setMessage(`Successfully added ${curr.itemCount} tracks to the mix.`);
+                    return;
+                }
+                if (curr.status === 'failed') {
+                    throw new Error(
+                        curr.error || 'Failed to process submission.'
+                    );
+                }
+                setMessage(
+                    curr.status === 'processing'? 'Importing tracks...' : 'Waiting for an ingestion worker...'
+                );
+            }
+            setStatus('pending');
+            setMessage('Submission is still processing. Check back later.');
+        } catch (err) {
             setStatus('error');
-            setMessage(error.message);
-        } finally {
-            setStatus('idle');
+            setMessage(err.message);
         }
     }
     return (
@@ -56,6 +89,12 @@ export default function SubmitSrc() {
             {message && (
                 <p className={`submit-source__message submit-source__message--${status}`} role="status">
                     {message}
+                </p>
+            )}
+            {sub && (
+                <p className="submit-source__message">
+                    Status: {sub.status}
+                    {sub.itemCount > 0 && ` · ${sub.itemCount} tracks`}
                 </p>
             )}
             {sub?.truncated && (

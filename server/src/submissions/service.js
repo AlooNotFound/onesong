@@ -1,6 +1,7 @@
 import { db, FieldVal, Timestamp } from '../firebase.js';
 import { parseYTUrl, resolveYTSubmission } from './yt.js';
 import { normalizeTrack } from './normalizeTrack.js';
+import {enqueueIngestion} from '../jobs/schema.js';
 
 const MAX_PL_ENTRIES = 500;
 const BATCH_TRACK_LIMIT = 200;
@@ -78,6 +79,7 @@ async function saveTrackForSub({ subRef, track, position }) {
             version: norm.version,
             canDeduplicate: norm.canDeduplicate,
             deduplicationMethod: norm.deduplicationMethod,
+            published: false,
             srcCount: 1,
             submissionCount: membershipExists ? 0 : 1,
             representativeSourceId: track.providerTrackId,
@@ -108,75 +110,40 @@ async function saveTrackForSub({ subRef, track, position }) {
     });
 }
 
-export async function createSub({ url, uid }) {
-    const parsed = parseYTUrl(url);
-    const subRef = db.collection('submissions').doc();
+export async function createSubmission({ url, uid }) {
+  const parsed = parseYTUrl(url);
+  const subRef = db
+    .collection('submissions')
+    .doc();
+  await subRef.create({
+    submittedBy: uid,
+    srcUrl: url.trim(),
+    srcType: parsed.type,
+    provider: 'youtube',
+    status: 'queued',
+    itemCount: 0,
+    truncated: false,
+    error: null,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+    completedAt: null,
+  });
+  try {
+    await enqueueIngestion({ subId: subRef.id, uid, });
+  } catch (err) {
+    await subRef.update({ status: 'failed', error: err.message, completedAt: FieldVal.serverTimestamp(), }).catch(() => {});
+    throw err;
+  }
 
-    await subRef.create({
-        submittedBy: uid,
-        srcUrl: url,
-        srcType: parsed.type,
-        provider: 'youtube',
-        status: 'processing',
-        itemCount: 0,
-        truncated: false,
-        error: null,
-        createdAt: Timestamp.now(),
-        completedAt: null,
-    });
-
-    try {
-        const res = await resolveYTSubmission(parsed, { maxPlaylistEntries: MAX_PL_ENTRIES });
-
-        const uniqueTracks = [
-            ...new Map(
-                res.tracks.map((track) => [track.providerTrackId, track])
-            ).values(),
-        ];
-
-        for (let i = 0; i< uniqueTracks.length; i += BATCH_TRACK_LIMIT) {
-            const chunk = uniqueTracks.slice(i, i + BATCH_TRACK_LIMIT);
-            const batch = db.batch();
-            chunk.forEach((track, chunkIdx) => {
-                const pos = i + chunkIdx;
-                const trackRef = db.collection('tracks').doc(`yt_${track.providerTrackId}`);
-                const membershipRef = subRef.collection('tracks').doc(track.providerTrackId);
-                batch.set(trackRef, {
-                    provider: 'youtube',
-                    providerTrackId: track.providerTrackId,
-                    title: track.title,
-                    artist: track.artist,
-                    duration: track.duration,
-                    thumbnailUrl: track.thumbnailUrl,
-                    srcUrl: track.srcUrl,
-                    subCount: FieldVal.increment(1),
-                    lastSubAt: FieldVal.serverTimestamp(),
-                }, { merge: true });
-                batch.set(membershipRef, {
-                    providerTrackId: track.providerTrackId,
-                    position: pos,
-                    addedAt: FieldVal.serverTimestamp(),
-                });
-            });
-            await batch.commit();
-        }
-        await subRef.update({
-            status: 'completed',
-            itemCount: uniqueTracks.length,
-            truncated: res.truncated,
-            error: null,
-            completedAt: FieldVal.serverTimestamp(),
-        });
-        return getSubmission(subRef.id);
-    } catch(err) {
-        await subRef.update({
-            status: 'failed',
-            error: err.message || 'Failed',
-            completedAt: FieldVal.serverTimestamp(),
-        }).catch(() => {});
-        err.subId = subRef.id;
-        throw err;
-    }
+  return {
+    id: subRef.id,
+    submittedBy: uid,
+    srcUrl: url.trim(),
+    srcType: parsed.type,
+    status: 'queued',
+    itemCount: 0,
+    truncated: false,
+  };
 }
 
 export async function getSub(subId) {
@@ -226,9 +193,9 @@ export async function listSubs({ limit = 20 } = {}) {
 
 export async function getDiscoveryPool({ limit = 20, cursor = null,} = {}) {
     const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
-    let q = db.collection('tracks').orderBy('lastSubmittedAt', 'desc').limit(safeLimit);
+    let q = db.collection('canonical_tracks').where('published', '==', true).orderBy('lastSubmittedAt', 'desc').limit(safeLimit);
     if (cursor) {
-        const cursorSnap = await db.collection('tracks').doc(cursor).get();
+        const cursorSnap = await db.collection('canonical_tracks').doc(cursor).get();
         if (!cursorSnap.exists) {
             return { tracks: [], nextCursor: null };
         }
@@ -244,4 +211,56 @@ export async function getDiscoveryPool({ limit = 20, cursor = null,} = {}) {
         })),
         nextCursor: snap.docs.length === safeLimit ? snap.docs[snap.docs.length - 1].id : null,
     }
+}
+
+export async function processIngestionJob(subId) {
+  const subRef = db.collection('submissions').doc(subId);
+  const subSnap = await subRef.get();
+  if (!subSnap.exists) {
+    throw new Error('Submission not found.');
+  }
+
+  const data = subSnap.data();
+
+  if (data.status === 'completed') {
+    return { subId, status: 'completed', alreadyCompleted: true, };
+  }
+  const parsed = parseYTUrl(data.srcUrl);
+  await subRef.update({ status: 'processing', updatedAt: FieldVal.serverTimestamp(), error: null, });
+  const res = await resolveYTSubmission(parsed, { maxPlaylistEntries: MAX_PL_ENTRIES, });
+  const uniqueTracks = [ ...new Map( res.tracks.map((track) => [ track.providerTrackId, track, ]) ).values() ];
+
+  for (let i = 0; i < uniqueTracks.length; i++) {
+    await saveTrackForSub({ subRef, track: uniqueTracks[i], position: i, 
+    });
+  }
+  const memberships = await subRef.collection('tracks').get();
+  const canonicalRefs = [ ...new Map(memberships.docs.map((doc) => doc.data().canonicalTrackId).filter(Boolean).map((id) => [ id, db.collection('canonical_tracks').doc(id), ])).values(),];
+  for (let i = 0; i < canonicalRefs.length; i += 450) {
+    const batch = db.batch();
+    for (const ref of canonicalRefs.slice(i, i + 450)) {
+      batch.set(ref, {
+        published: true,
+        lastSubmittedAt: FieldVal.serverTimestamp(),
+      }, { merge: true });
+    }
+    await batch.commit();
+  }
+
+  await subRef.update({
+    status: 'completed',
+    itemCount: uniqueTracks.length,
+    nextCursor: res.nextCursor,
+    truncated: res.truncated,
+    error: null,
+    completedAt: FieldVal.serverTimestamp(),
+    updatedAt: FieldVal.serverTimestamp(),
+  });
+
+  return {
+    subId,
+    status: 'completed',
+    itemCount: uniqueTracks.length,
+    truncated: result.truncated,
+  };
 }

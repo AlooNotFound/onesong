@@ -93,6 +93,7 @@ for (const [canonicalId, group] of canonicalGroups.entries()) {
               version: group.version,
               canDeduplicate: group.canDeduplicate,
               deduplicationMethod: group.deduplicationMethod,
+              published: false,
               srcCount: group.srcCount,
               submissionCount: canonicalSubSets.get(canonicalId)?.size ?? 0,
               representativeSourceId: group.representativeSrcId,

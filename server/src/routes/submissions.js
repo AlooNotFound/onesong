@@ -13,7 +13,7 @@ router.post('/', requireAuth, async (req, res) => {
       });
     }
     const sub = await createSub({ url, uid: req.user.uid, });
-    return res.status(201).json({ submission: sub });
+    return res.status(202).json({ submission: sub });
   } catch (err) {
     const code = err instanceof SubmissionError ? err.statusCode : 500;
     return res.status(code).json({
