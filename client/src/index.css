@@ -169,7 +169,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-..skip-card {
+.skip-card {
   display: grid;
   gap: 16px;
 }
