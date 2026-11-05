@@ -1,5 +1,6 @@
 import { db, FieldVal, Timestamp } from '../firebase.js';
 import { parseYTUrl, resolveYTSubmission } from './yt.js';
+import { normalizeTrack } from './normalizeTrack.js';
 
 const MAX_PL_ENTRIES = 500;
 const BATCH_TRACK_LIMIT = 200;
@@ -24,6 +25,87 @@ function serializeSubmission(sub) {
         createdAt: timestampToMillis(data.createdAt),
         completedAt: timestampToMillis(data.completedAt),
     }
+}
+
+async function saveTrackForSub({ subRef, track, position }) {
+    const norm = normalizeTrack(track);
+    const srcRef = db.collection('tracks').doc(`yt_${track.providerTrackId}`);
+    const membershipRef = subRef.collection('tracks').doc(track.providerTrackId);
+    const canonicalRef = db.collection('tracks').doc(norm.canonicalId);
+    await db.runTransaction(async (tx) => {
+        const [srcSnap, canonicalSnap, membershipSnap] = await Promise.all([
+            tx.get(srcRef),
+            tx.get(canonicalRef),
+            tx.get(membershipRef),
+        ]);
+        const now = FieldVal.serverTimestamp();
+        const srcExists = srcSnap.exists;
+        const membershipExists = membershipSnap.exists;
+        const oldSrc = srcExists ? srcSnap.data() : null;
+        const oldCanonical = canonicalSnap.exists ? canonicalSnap.data() : null;
+        const oldMembership = membershipExists ? membershipSnap.data() : null;
+        const srcChangedCanonical = oldSrc?.canonicalId !== norm.canonicalId;
+        tx.set(srcRef, {
+            provider: 'youtube',
+            providerTrackId: track.providerTrackId,
+            title: norm.title,
+            originalTitle: track.title,
+            artist: norm.artist,
+            uploader: norm.uploader,
+            duration: track.duration,
+            thumbnailUrl: track.thumbnailUrl,
+            srcUrl: track.srcUrl,
+            canonicalTrackId: norm.canonicalId,
+            normTitle: norm.normTitle,
+            normArtist: norm.normArtist,
+            version: norm.version,
+            artistSrc: norm.artistSrc,
+            deduplicationMethod: norm.deduplicationMethod,
+            firstSubmittedAt:
+            oldSrc?.firstSubmittedAt ?? now,
+            lastSubmittedAt: now,
+            submissionCount: FieldVal.increment(
+            membershipExists ? 0 : 1
+        ),
+      }, { merge: true });
+
+      if (!canonicalSnap.exists || srcChangedCanonical) {
+        tx.create(canonicalRef, {
+            title: norm.title,
+            artist: norm.artist,
+            normTitle: norm.normTitle,
+            normArtist: norm.normArtist,
+            version: norm.version,
+            canDeduplicate: norm.canDeduplicate,
+            deduplicationMethod: norm.deduplicationMethod,
+            srcCount: 1,
+            submissionCount: membershipExists ? 0 : 1,
+            representativeSourceId: track.providerTrackId,
+            firstSubmittedAt: now,
+            lastSubmittedAt: now,
+        });
+      } else {
+        const updates = {
+            lastSubmittedAt: now,
+        };
+        if (!srcExists || srcChangedCanonical) {
+            updates.srcCount = FieldVal.increment(1);
+        }
+
+        if (!membershipExists) {
+            updates.submissionCount = FieldVal.increment(1);
+        }
+        tx.update(canonicalRef, updates);
+      }
+      if (!membershipExists) {
+        tx.create(membershipRef, {
+            providerTrackId: track.providerTrackId,
+            canonicalTrackId: norm.canonicalId,
+            position,
+            addedAt: now,
+        });
+      }
+    });
 }
 
 export async function createSub({ url, uid }) {
