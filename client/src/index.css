@@ -244,3 +244,43 @@ body {
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+.synced-player {
+    width: 100%;
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.synced-player__now-playing,
+.synced-player__waiting {
+    margin-bottom: 20px;
+}
+
+.synced-player__now-playing h2 {
+    margin: 12px 0 6px;
+}
+
+.synced-player__now-playing p,
+.synced-player__waiting p {
+    opacity: 0.65;
+}
+
+.synced-player button {
+    padding: 12px 24px;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+}
+
+.synced-player button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.synced-player .error {
+    color: #ef6464;
+    margin-top: 12px;
+}

@@ -63,6 +63,12 @@ export async function advStation() {
             const duration =  doc.data().duration;
             return Number.isFinite(duration) && duration > 0;
         });
+        for (const doc of readySnap.docs) {
+            const duration = doc.data().duration;
+            if (!Number.isFinite(duration) || duration <= 0) {
+                tx.update(doc.ref, { status: 'failed', updatedAt: FieldVal.serverTimestamp() });
+            }
+        }
         if ( prevCache?.exists && prevCache.data().status === 'playing') {
             tx.update(prevCache.ref, { status: 'deleting', playedAt: FieldVal.serverTimestamp(), updatedAt: FieldVal.serverTimestamp() });
         }

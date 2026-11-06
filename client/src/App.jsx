@@ -6,6 +6,7 @@ import NowPlaying from './components/NowPlaying.jsx';
 import YouTubePlayer from './components/YouTubePlayer.jsx';
 import SkipVote from './components/SkipVote.jsx';
 import SubmitSrc from './components/SubmitSrc.jsx';
+import SyncedPlayer from './components/SyncedAudioPlayer.jsx';
 
 export default function App() {
   const clock = useServerClock();
@@ -20,7 +21,8 @@ export default function App() {
       </header>
 
       <NowPlaying station={station} nowMs={nowMs}/>
-      <YouTubePlayer station={station} nowMs={nowMs}/>
+      {/* <YouTubePlayer station={station} nowMs={nowMs}/> */}
+      <SyncedPlayer station={station} nowMs={nowMs}/>
       <SkipVote station={station} />
 
       <p className="status" role="status" aria-live="polite">
