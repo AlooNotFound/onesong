@@ -10,7 +10,7 @@ function tsMillis(val) {
     return val?.toMillis?.() ?? null;
 }
 
-function serialize(data, serverTime = Date.now()) {
+function serializeStation(data, serverTime = Date.now()) {
     if (!data || data.status !== 'playing') {
         return {
             status: 'waiting',
@@ -45,13 +45,35 @@ function serialize(data, serverTime = Date.now()) {
     };
 }
 
-export async function advStation() {
+export async function advanceStation({
+    force = false,
+    expectedSongNumber = null,
+    endReason = 'completed',
+} = {}) {
     const now = Date.now();
-    return db.runTx( async (tx) => {
+    return db.runTx(async (tx) => {
         const currSnap = await tx.get(stationRef);
         const curr = currSnap.exists ? currSnap.data() : null;
-        if (curr?.status !== 'playing' || tsMillis(curr.endsAt) <= now) {
-            return serialize(curr, now);
+        const currentSongNumber = curr?.songNumber ?? curr?.songNum;
+        if (
+            expectedSongNumber !== null &&
+            Number(currentSongNumber) !== Number(expectedSongNumber)
+        ) {
+            return serializeStation(curr, now);
+        }
+        const previousSongNumber = currentSongNumber;
+        const previousHistoryRef = previousSongNumber
+            ? db.collection('play_history').doc(String(previousSongNumber))
+            : null;
+        const previousHistorySnapshot = previousHistoryRef
+            ? await tx.get(previousHistoryRef)
+            : null;
+        if (
+            !force &&
+            curr?.status === 'playing' &&
+            tsMillis(curr.endsAt) > now
+        ) {
+            return serializeStation(curr, now);
         }
         let prevCache = null;
         if (curr?.canonicalTrackId) {
@@ -85,6 +107,12 @@ export async function advStation() {
         }
         if ( prevCache?.exists && prevCache.data().status === 'playing') {
             tx.update(prevCache.ref, { status: 'deleting', playedAt: FieldVal.serverTimestamp(), updatedAt: FieldVal.serverTimestamp() });
+            if (previousHistoryRef && previousHistorySnapshot?.exists) {
+                tx.update(previousHistoryRef, {
+                    endedAt: Timestamp.fromMillis(now),
+                    endReason,
+                });
+            }
         }
         const nextSongNum = (curr?.songNum ?? 0) + 1;
         if (!candidate) {
@@ -100,7 +128,7 @@ export async function advStation() {
                 updatedAt: FieldVal.serverTimestamp(),
             };
             tx.set(stationRef, waiting, { merge: true });
-            return serialize(waiting, now);
+            return serializeStation(waiting, now);
         }
         const track = candidate.data();
         const duration = track.duration;
@@ -137,10 +165,12 @@ export async function advStation() {
             likes: Number(selected.track.likes ?? 0),
             dislikes: Number(selected.track.dislikes ?? 0),
         });
-        return serialize(next, now);
+        return serializeStation(next, now);
     })
 }
 
 export async function getStation() {
-    return advStation();
+    return advanceStation();
 }
+
+export const advStation = advanceStation;

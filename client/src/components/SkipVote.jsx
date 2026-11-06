@@ -1,28 +1,54 @@
-import { useSkipVote } from "../hooks/useSkipVote.js";
+import { useState } from "react";
+import { auth } from "../firebase.js";
 
-export default function SkipVote({ station }) {
-    const { votes, threshold, activeListeners, hasVoted, advancing, vote, pending, msg } = useSkipVote(station);
-    if (!station) return null;
+export default function SkipVote() {
+    const [skip, setSkip] = useState({votes: 0, myVote: false});
+    const [loading, setLoading] = useState(true);
+    const [err, setErr] = useState(null);
 
-    const progress = Math.min(100, Math.round((votes / threshold) * 100));
-
+    async function handleSkip() {
+        if (loading) return;
+        try {
+            setLoading(true);
+            setErr('');
+            const user = auth.currentUser;
+            if (!user) {
+                setErr('Sign in to vote');
+                return;
+            }
+            const token = await user.getIdToken();
+            const resp = await fetch('/api/skip', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                throw new Error(data.error || 'Failed to cast skip vote');
+            }
+            setSkip(data);
+        } catch (err) {
+            setErr(err.message);
+        } finally {
+            setLoading(false);
+        }
+    } 
     return (
-        <section className= "card skip-card">
-            <div className="skip-heading">
-                <div>
-                    <p className="eyebrow">Community control</p>
-                    <h2 className="skip-title">Skip this song?</h2>
-                </div>
-                <span className="skip-count">{votes} of {threshold} votes</span>
-            </div>
-            <div className="skip-progress" role="progressbar" aria-valuenow={Math.min(votes, threshold)} aria-valuemin="0" aria-valuemax={threshold}>
-                <div className="skip-progress-fill" style={{ width: `${progress}%` }}></div>
-            </div>
-            <p className="skip-desc">{activeListeners} active listeners. A majority is needed to skip.</p>
-            <button className="skip-btn" type="button" disabled={pending || advancing || hasVoted} onClick={vote}>
-                {advancing ? "Skipping..." : "Skip"}
+       <div className="skip-vote">
+            <button type="button" onClick={handleSkip} disabled={loading}>
+                {loading ? 'Voting...' : 'Skip track'}
             </button>
-            <p className="skip-msg" role="status" aria-live="polite">{msg}</p>
-        </section>
-    );
+            {skip && (
+                <span className="skip-vote__status">
+                {skip.advanced ? 'Track skipped' : `${skip.votes}/${skip.required} votes to skip`}
+                </span>
+            )}
+            {err && (
+                <span className="skip-vote__error" role="alert">
+                {err}
+                </span>
+            )}
+    </div>
+  );
 }
