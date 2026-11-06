@@ -1,14 +1,34 @@
 import { advStation } from "./service";
+import { getPlayHistory } from "../history/service.js";
+import { publishEvent } from "../realtime/events.js";
 const POLL_MS = 1000;
 
+let prevSig = null;
 let running = false;
 let stopping = false;
+
+function getSig(station) {
+    return JSON.stringify({
+        status: station?.status,
+        songNum: station?.songNum,
+        canonicalTrackId: station?.song?.canonicalTrackId ?? null,
+        startedAt: station?.startedAt ?? null,
+        endsAt: station?.endsAt ?? null
+    });
+}
 
 async function tick() {
     if (running || stopping ) return;
     running = true;
     try {
         const station = await advStation();
+        const sig = getSig(station);
+        if (sig !== prevSig) {
+            prevSig = sig;
+            const history = await getPlayHistory(20);
+            publishEvent('station', station);
+            publishEvent('history', history);
+        }
         if (station.status === 'playing') {
             console.log(`Now playing: ${station.song.title} by ${station.song.artist}`);
         }

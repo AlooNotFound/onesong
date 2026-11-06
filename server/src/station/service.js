@@ -173,4 +173,9 @@ export async function getStation() {
     return advanceStation();
 }
 
+export async function getStationSnap() {
+    const snapshot = await stationRef.get();
+    return serializeStation(snapshot.exists ? snapshot.data() : null);
+}
+
 export const advStation = advanceStation;

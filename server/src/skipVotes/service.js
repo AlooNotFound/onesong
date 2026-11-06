@@ -1,5 +1,6 @@
 import { db, Timestamp, FieldVal } from '../firebase.js';
 import { advStation } from '../station/service';
+import { publishEvent } from '../events/service.js';
 
 const SKIP_THRESHOLD = 2;
 

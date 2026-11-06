@@ -1,4 +1,5 @@
-import { db, TImestamp, FieldVal } from '../firebase.js';
+import { db, Timestamp, FieldVal } from '../firebase.js';
+import { publishEvent } from '../events/service.js';
 
 function getVoteRef(canonicalTrackId, uid) {
     return db.collection('canonical_tracks').doc(canonicalTrackId).collection('votes').doc(uid);
@@ -27,6 +28,7 @@ export async function setTrackVote({ canonicalTrackId, uid, vote }) {
         const dislikes = Number(track.dislikes ?? 0);
         if (prevVote === normVal) {
             return {
+                canonicalTrackId,
                 likes, dislikes, myVote: prevVote
             }
         }
@@ -47,6 +49,7 @@ export async function setTrackVote({ canonicalTrackId, uid, vote }) {
             });
         }
         return {
+            canonicalTrackId,
             likes: Math.max(0, nxtLikes),
             dislikes: Math.max(0, nxtDislikes),
             myVote: normVal

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useStationEvents } from "../hooks/useStationEvents.js";
 
 const POLL_MS = 2000;
 const DRIFT_THRESHOLD = 1.25;
@@ -11,6 +12,7 @@ export default function SyncedPlayer() {
     const [isEnabled, setIsEnabled] = useState(false);
     const [playbackErr, setPlaybackErr] = useState(null);
     const isEnabledRef = useRef(false);
+    const { station: liveStation, connected, skipVotes } = useStationEvents();
 
     stationRef.current = station;
 
@@ -31,6 +33,11 @@ export default function SyncedPlayer() {
         const timer = setInterval(fetchStation, POLL_MS);
         return () => clearInterval(timer);
     }, []);
+    useEffect(() => {
+        if (!liveStation) return;
+        setStation(liveStation);
+        stationRef.current = liveStation;
+    }, [liveStation]);
     useEffect(() => {
         const aud = audRef.current;
         if (!aud || !station) return;

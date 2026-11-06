@@ -11,6 +11,7 @@ import stationRouter from "./routes/station.js";
 import tracksRouter from "./routes/tracks.js";
 import skipRouter from '../routes/skip.js';
 import historyRouter from '../routes/history.js';
+import eventsRouter from './routes/events.js';
 
 const app = express();
 app.use(express.json({ limit: '16kb' }));
@@ -20,6 +21,7 @@ app.use('/api/station', stationRouter);
 app.use('/api/tracks', tracksRouter);
 app.use('/api/skip', skipRouter);
 app.use('/api/history', historyRouter);
+app.use('/api/events', eventsRouter);
 const station = new Station({ catalog: loadCatalogue() });
 const listenerReg = createListenerRegistry();
 const skipSrv = createSkipSrv({
