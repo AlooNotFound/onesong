@@ -7,6 +7,7 @@ import YouTubePlayer from './components/YouTubePlayer.jsx';
 import SkipVote from './components/SkipVote.jsx';
 import SubmitSrc from './components/SubmitSrc.jsx';
 import SyncedPlayer from './components/SyncedAudioPlayer.jsx';
+import TrackVote from './components/TrackVote.jsx';
 
 export default function App() {
   const clock = useServerClock();
