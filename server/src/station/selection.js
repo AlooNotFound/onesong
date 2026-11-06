@@ -15,7 +15,7 @@ function calciWeight(track, recentArtists) {
 export function selWeightedTrack(candies, recentArtists = []) {
     if (!candies || candies.length === 0) return null;
     const weighted = candies.map((candy) => ({
-        candy, w: calciWeight(candy.track, recentArtists);
+        candy, w: calciWeight(candy.track, recentArtists),
     }));
     const total = weighted.reduce((sum, { w }) => sum + w, 0);
     let rand = Math.random() * total;
