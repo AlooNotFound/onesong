@@ -341,3 +341,35 @@ body {
   font-size: 12px;
   color: #e05b5b;
 }
+
+.profile-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+}
+
+.profile-setup label {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.profile-setup input,
+.profile-setup textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-color);
+  color: inherit;
+}
+
+.profile-setup textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.profile-setup__error {
+  color: #e05b5b;
+  font-size: 13px;
+}
