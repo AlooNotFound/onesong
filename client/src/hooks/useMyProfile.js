@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase.js';
+import { auth } from '../lib/firebase.js';
 import { getMyProfile } from '../lib/users.js';
 
 export function useMyProfile() {

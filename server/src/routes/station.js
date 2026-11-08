@@ -1,14 +1,14 @@
 import { Router } from "express";
-import { getStation } from "../station.js";
+import { getStation } from "../station/service.js";
 
 const router = Router();
 
 router.get('/', async (_req, res) => {
-    try{
+    try {
         const station = await getStation();
-        return res.json(station);
+        return res.json({ station, ...station });
     } catch (err) {
-        console.error(err);
+        console.error('Error fetching station:', err);
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 });

@@ -3,7 +3,7 @@ import { db, FieldVal, Timestamp } from '../firebase.js';
 export async function enqueueIngestion({ subId, uid }) {
     const subRef = db.collection('submissions').doc(subId);
     const jobRef = db.collection('ingestionJobs').doc(subId);
-    await db.runTx(async (tx) => {
+    await db.runTransaction(async (tx) => {
         const [sub, existingJob] = await Promise.all([
             tx.get(subRef),
             tx.get(jobRef),

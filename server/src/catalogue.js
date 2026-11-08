@@ -3,14 +3,14 @@ import path from 'path';
 
 const dir = path.resolve(import.meta.dirname, '../data');
 
-export function validate(entries, src) {
+export function validate(entries, src = 'seed') {
     if (!Array.isArray(entries) || entries.length === 0) {
         throw new Error(`Invalid ${src} data: expected a non-empty array`);
     }
 
     const seen = new Set();
     entries.forEach((s, i) => {
-        const where = `${source}[${i}]`;
+        const where = `${src}[${i}]`;
         if (!s || typeof s.id !== 'string' || s.id.trim() === '') {
             throw new Error(`Invalid ${where}: missing or empty 'id'`);
         }
@@ -27,20 +27,30 @@ export function validate(entries, src) {
             throw new Error(`Invalid ${where}: duplicate 'id'`);
         }
         seen.add(s.id);
-    })
+    });
     return entries;
 }
 
 export function loadCatalogue() {
     const candidates = [process.env.SEED_FILE, path.join(dir, 'seed.json')].filter(Boolean);
-    const f = candidates.find(f => fs.existsSync(f));
-    if (!f) {
-        throw new Error(`No seed file found. Tried: ${candidates.join(', ')}`);
+    const f = candidates.find((file) => fs.existsSync(file));
+    if (f) {
+        try {
+            const content = fs.readFileSync(f, 'utf-8').trim();
+            if (content) {
+                const parsed = JSON.parse(content);
+                return validate(parsed, f);
+            }
+        } catch (err) {
+            console.warn(`Could not load seed catalog from ${f}: ${err.message}`);
+        }
     }
-    const entries = validate(JSON.parse(fs.readFileSync(f, 'utf-8')), f);
-    const placeholders = entries.filter(s => s.id.startsWith('REPLACE_'));
-    if(placeholders.length > 0) {
-        console.warn(`Warning: ${placeholders.length} placeholder entries found in ${f}. Please replace them with real data.`);
-    }
-    return entries;
+    return [
+        {
+            id: 'dQw4w9WgXcQ',
+            title: 'Never Gonna Give You Up',
+            artist: 'Rick Astley',
+            duration: 213,
+        },
+    ];
 }

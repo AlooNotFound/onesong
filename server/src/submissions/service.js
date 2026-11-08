@@ -146,9 +146,11 @@ export async function createSubmission({ url, uid }) {
   };
 }
 
+export const createSub = createSubmission;
+
 export async function getSub(subId) {
     const subRef = db.collection('submissions').doc(subId);
-    const snap = await subRef.getSub();
+    const snap = await subRef.get();
     if (!snap.exists) return null;
     const sub = serializeSubmission(snap);
     const tracksSnap = await subRef.collection('tracks').orderBy('position', 'asc').get();

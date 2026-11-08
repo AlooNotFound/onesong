@@ -1,4 +1,4 @@
-import { advStation } from "./service";
+import { advStation } from "./service.js";
 import { getPlayHistory } from "../history/service.js";
 import { publishEvent } from "../realtime/events.js";
 const POLL_MS = 1000;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { auth } from "../firebase.js";
+import { auth } from "../lib/firebase.js";
 
 export default function TrackVote({ canonicalTrackId}) {
     const [vote, setVote] = useState({likes: 0, dislikes: 0, myVote: 0});

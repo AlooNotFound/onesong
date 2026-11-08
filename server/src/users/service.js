@@ -52,7 +52,7 @@ export async function createProfile(uid, inp) {
     }
     const userRef = db.collection('users').doc(uid);
     const usernameRef = db.collection('usernames').doc(usernameLower);
-    return db.runTx(async (tx) => {
+    return db.runTransaction(async (tx) => {
         const [userSnap, usernameSnap] = await Promise.all([
             tx.get(userRef),
             tx.get(usernameRef)
@@ -82,7 +82,7 @@ export async function createProfile(uid, inp) {
 
 export async function updateProfile(uid, inp) {
     const userRef = db.collection('users').doc(uid);
-    return db.runTx(async (tx) => {
+    return db.runTransaction(async (tx) => {
         const userSnap = await tx.get(userRef);
         if (!userSnap.exists) {
             throw Object.assign(new Error('User profile not found'), { status: 404 });
@@ -143,7 +143,7 @@ export async function changeUsername(uid, newUsername) {
     validateUsername(username);
     const userRef = db.collection('users').doc(uid);
     const usernameRef = db.collection('usernames').doc(usernameLower);
-    return db.runTx(async (tx) => {
+    return db.runTransaction(async (tx) => {
         const [userSnap, usernameSnap] = await Promise.all([
             tx.get(userRef),
             tx.get(usernameRef)

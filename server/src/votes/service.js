@@ -1,5 +1,5 @@
 import { db, Timestamp, FieldVal } from '../firebase.js';
-import { publishEvent } from '../events/service.js';
+import { publishEvent } from '../realtime/events.js';
 
 function getVoteRef(canonicalTrackId, uid) {
     return db.collection('canonical_tracks').doc(canonicalTrackId).collection('votes').doc(uid);
@@ -12,7 +12,7 @@ export async function setTrackVote({ canonicalTrackId, uid, vote }) {
     const normVal = Number(vote);
     const trackRef = db.collection('canonical_tracks').doc(canonicalTrackId);
     const voteRef = getVoteRef(canonicalTrackId, uid);
-    await db.runTx(async (tx) => {
+    await db.runTransaction(async (tx) => {
         const [trackSnap, voteSnap] = await Promise.all([
             tx.get(trackRef),
             tx.get(voteRef)

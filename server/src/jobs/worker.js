@@ -31,7 +31,7 @@ async function findCandidates() {
 
 async function claimJob(jobId) {
     const jobRef = db.collection('ingestion_jobs').doc(jobId);
-    return db.runTx(async (tx) => {
+    return db.runTransaction(async (tx) => {
         const snap = await tx.get(jobRef);
         if (!snap.exists) {
             return null;
@@ -49,7 +49,7 @@ async function claimJob(jobId) {
         if (attempts >= MAX_ATTEMPTS) {
             return null;
         }
-        await db.runTx(async (tx) => {
+        await db.runTransaction(async (tx) => {
             await tx.update(jobRef, {
                 status: 'running',
                 workerId,
@@ -64,7 +64,7 @@ async function claimJob(jobId) {
 
 async function renewLease(jobId) {
     const jobRef = db.collection('ingestion_jobs').doc(jobId);
-    return db.runTx(async (tx) => {
+    return db.runTransaction(async (tx) => {
         const snap = await tx.get(jobRef);
         if (!snap.exists) {
             return false;
@@ -82,7 +82,7 @@ async function renewLease(jobId) {
 
 async function completeJob(jobId) {
     const jobRef = db.collection('ingestion_jobs').doc(jobId);
-    await db.runTx(async (tx) => {
+    await db.runTransaction(async (tx) => {
         const snap = await tx.get(jobRef);
         if (!snap.exists) {
             return false;
@@ -103,7 +103,7 @@ async function completeJob(jobId) {
 
 async function failJob(jobId, err) {
     const jobRef = db.collection('ingestion_jobs').doc(jobId);
-    await db.runTx(async (tx) => {
+    await db.runTransaction(async (tx) => {
         const snap = await tx.get(jobRef);
         if (!snap.exists) {
             return false;

@@ -1,21 +1,23 @@
 import { replenishCache, getCacheStatus } from './cacheSrv.js';
-import { processStagedAssets } from './stagingSrv.js';
-import { cleanPlayed } from './cleanup.js';
+import { processStagedAssets } from './staging.js';
+import { cleanPlayed, auditCacheStorage } from './cleanup.js';
 
 const POLL_MS = 5000;
 let stopping = false;
 let running = false;
 
-async function poll() {
+export async function poll() {
     if (stopping || running) return;
     running = true;
     try {
-        const replenished = await replenishCache();
-        const staged = await processStagedAssets();
         const cleaned = await cleanPlayed();
+        const audited = await auditCacheStorage();
+
+        const staged = await processStagedAssets();
+        const replenished = await replenishCache();
         const stats = await getCacheStatus();
-        if (replenished.added > 0 || staged.processed > 0 || cleaned.cleaned > 0) {
-            console.log(`cache update: replenished ${replenished.added}, staged ${staged.processed}, cleaned ${cleaned.cleaned}, active ${stats.active}`);
+        if (replenished.added > 0 || staged.processed > 0 || cleaned > 0 || audited > 0) {
+            console.log(`cache update: replenished ${replenished.added}, staged ${staged.processed}, cleaned ${cleaned}, audited ${audited} | Active: ${stats.active}/10 (Ready: ${stats.ready}, Playing: ${stats.playing}, Downloading: ${stats.downloading})`);
         }
     } catch (error) {
         console.error('Error in poll:', error);
@@ -38,5 +40,5 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 console.log('audio worker started');
 await poll();
-setInterval(poll, POLL_MS);
+const timer = setInterval(poll, POLL_MS);
 process.on('beforeExit', () => clearInterval(timer));

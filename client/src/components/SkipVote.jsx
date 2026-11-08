@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { auth } from "../firebase.js";
+import { auth } from "../lib/firebase.js";
 
 export default function SkipVote() {
     const [skip, setSkip] = useState({votes: 0, myVote: false});

@@ -1,9 +1,11 @@
+import { extractVIdMeta, extractPLMeta } from '../audio/downloader.js';
+
 const YT_URLS = new Set([
     'youtube.com',
     'www.youtube.com',
     'm.youtube.com',
     'music.youtube.com',
-    'youtu.be'
+    'youtu.be',
 ]);
 
 const VID_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
@@ -41,9 +43,9 @@ export function parseYTUrl(input) {
     } else {
         const parts = url.pathname.split('/').filter(Boolean);
         if (parts[0] === 'watch') {
-        vidId = url.searchParams.get('v');
+            vidId = url.searchParams.get('v');
         } else if (['shorts', 'embed', 'live'].includes(parts[0])) {
-        vidId = parts[1] ?? null;
+            vidId = parts[1] ?? null;
         }
     }
 
@@ -64,97 +66,28 @@ export function parseYTUrl(input) {
     }
 
     return { type: 'video', id: vidId };
-    throw new SubmitErr('Invalid YouTube URL: no valid video or playlist ID found');
-}
-
-async function ytReq(endpoint, params = {}, method = 'GET') {
-    const apiKey = process.env.YOUTUBE_API_KEY;
-    if (!apiKey) {
-        throw new SubmitErr('YouTube API key is not configured', 500);
-    }
-
-    const url = new URL(`https://www.googleapis.com/youtube/v3/${endpoint}`);
-    params.key = apiKey;
-    Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-            url.searchParams.append(key, value);
-        }
-    });
-    const resp = await fetch(url.toString(), { method });
-    if (!resp.ok) {
-        const body = await resp.json().catch(() => ({}));
-        throw new SubmitErr(
-            `YouTube API request failed: ${resp.status} ${resp.statusText}`,
-            resp.status
-        );
-    }
-    return await resp.json();
-}
-
-function parseDur(val) {
-    if (!val) return null;
-    const match = val.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
-    if (!match) return null;
-    const [, h, m, s] = match.map(Number);
-    return (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
 }
 
 async function getVideoInfo(vidIds) {
-    const res = [];
-    for (let i = 0; i < vidIds.length; i += 50) {
-        const batch = vidids.slice(i, i + 50);
-        const data = await ytReq('videos', {
-            part: 'snippet,contentDetails,statistics',
-            id: batch.join(','),
-        });
-        for (const i of data.items?? []) {
-            const snip = i.snippet ?? {};
-            res.push({
-                id: i.id,
-                title: snip.title ?? null,
-                description: snip.description ?? null,
-                artist: snip.channelTitle ?? null,
-                duration: parseDur(i.contentDetails?.duration),
-                thumbnailUrl: snip.thumbnails?.high?.url ?? snip.thumbnails?.default?.url ?? null,
-                srcUrl: `https://www.youtube.com/watch?v=${i.id}`,
-            });
-        }
-    }
-    return res;
+    const results = await Promise.all(
+        vidIds.map(async (id) => {
+            try {
+                return await extractVIdMeta(id);
+            } catch (err) {
+                console.error(`Failed to extract metadata without API for ${id}:`, err.message);
+                return null;
+            }
+        })
+    );
+    return results.filter(Boolean);
 }
 
 async function getPlaylistInfo(plId, maxEntries) {
-    const ids = [];
-    let pageToken;
-    let truncated = false;
-    while (true) {
-        const remaining = maxEntries - ids.length;
-        if (remaining <= 0) {
-            truncated = true;
-            break;
-        }
-        const data = await ytReq('playlistItems', {
-            part: 'contentDetails',
-            playlistId: plId,
-            maxResults: Math.min(remaining, 50),
-            pageToken,
-        });
-
-        for (const i of data.items ?? []) {
-            const id = i.contentDetails?.videoId;
-            if (id) {
-                ids.push(id);
-            }
-        }
-        pageToken = data.nextPageToken;
-
-        if (!pageToken) {
-            break;
-        }
-    }
+    const plInfo = await extractPLMeta(plId, maxEntries);
     return {
-        videoIds: [...new Set(ids)],
-        truncated,
+        videoIds: plInfo.videoIds,
+        tracks: plInfo.tracks,
+        truncated: plInfo.truncated,
     };
 }
 
@@ -166,13 +99,19 @@ export async function resolveYTSubmission(parsed, { maxPlaylistEntries = 500 } =
         }
         return { tracks, truncated: false };
     }
-    const { videoIds, truncated } = await getPlaylistInfo(parsed.id, maxPlaylistEntries);
-    if (!videoIds.length) {
+
+    const plResult = await getPlaylistInfo(parsed.id, maxPlaylistEntries);
+    if (!plResult.videoIds?.length) {
         throw new SubmitErr('Playlist not found or empty', 404);
     }
-    const tracks = await getVideoInfo(videoIds);
+
+    let tracks = plResult.tracks;
+    if (!tracks || !tracks.length) {
+        tracks = await getVideoInfo(plResult.videoIds);
+    }
     if (!tracks.length) {
         throw new SubmitErr('No valid videos found in playlist', 404);
     }
-    return { tracks, truncated };
+
+    return { tracks, truncated: plResult.truncated };
 }

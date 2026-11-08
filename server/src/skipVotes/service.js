@@ -1,12 +1,12 @@
 import { db, Timestamp, FieldVal } from '../firebase.js';
-import { advStation } from '../station/service';
-import { publishEvent } from '../events/service.js';
+import { advStation } from '../station/service.js';
+import { publishEvent } from '../realtime/events.js';
 
 const SKIP_THRESHOLD = 2;
 
 export async function castSkipVote(uid) {
     const stationRef = db.collection('stations').doc('global');
-    return db.runTx(async (tx) => {
+    return db.runTransaction(async (tx) => {
         const stationSnap = await tx.get(stationRef);
         if (!stationSnap.exists) {
             const err = new Error('Station not found');

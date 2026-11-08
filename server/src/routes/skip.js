@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { reqAuth } from "../middleware/reqAuth";
-import { castSkipVote } from "../skipVotes/service";
+import { reqAuth } from "../middleware/reqAuth.js";
+import { castSkipVote } from "../skipVotes/service.js";
 
 const router = Router();
 

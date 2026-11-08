@@ -1,13 +1,23 @@
 import admin from 'firebase-admin';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
-if (!admin.getApps.length) {
-    admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-        projectId: process.env.FIREBASE_PROJECT_ID,
-    });
+const apps = typeof admin.getApps === 'function' ? admin.getApps() : [];
+
+const credential = process.env.GOOGLE_APPLICATION_CREDENTIALS
+    ? (admin.credential?.applicationDefault?.() ?? admin.applicationDefault?.())
+    : undefined;
+
+const app = apps.length > 0 ? apps[0] : admin.initializeApp({
+    ...(credential ? { credential } : {}),
+    projectId: process.env.FIREBASE_PROJECT_ID || 'one-song-internet',
+});
+
+export const db = typeof app.firestore === 'function' ? app.firestore() : getFirestore(app);
+if (!db.runTransaction && typeof db.runTransaction === 'function') {
+    db.runTransaction = db.runTransaction.bind(db);
 }
 
-export const db = admin.firestore();
-export const auth = admin.auth();
-export const FieldVal = admin.firestore.FieldValue;
-export const Timestamp = admin.firestore.Timestamp;
+export const auth = typeof app.auth === 'function' ? app.auth() : getAuth(app);
+export const FieldVal = FieldValue;
+export { Timestamp };

@@ -7,6 +7,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
+    "worker:audio": "node src/audio/worker.js",
+    "worker:station": "node src/station/worker.js",
+    "worker:jobs": "node src/jobs/worker.js",
     "test": "node --test"
   },
   "dependencies": {

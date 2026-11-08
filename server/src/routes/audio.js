@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { db } from '../firebase.js';
-import { CACHE_DIR, AUDIO_MIME_TYPES } from '../audio/config.js';
+import { CACHE_DIR } from '../audio/config.js';
 
 const router = Router();
 
 router.get('/:canonicalTrackId', async (req, res) => {
     try {
         const { canonicalTrackId } = req.params;
-        if (!/^ct_[a-f0-9]{32}$/.test(canonicalTrackId)) {
+        if (!canonicalTrackId || !/^ct_[a-f0-9]{32}$/.test(canonicalTrackId)) {
             return res.status(400).json({ error: 'Invalid canonicalTrackId format' });
         }
         const snap = await db.collection('audio_cache').doc(canonicalTrackId).get();
@@ -16,13 +17,18 @@ router.get('/:canonicalTrackId', async (req, res) => {
             return res.status(404).json({ error: 'Audio not found' });
         }
         const data = snap.data();
-        if (data.status !== 'ready') {
-            return res.status(404).json({ error: 'Audio not ready' });
+        if (data.status !== 'ready' && data.status !== 'playing') {
+            return res.status(404).json({ error: `Audio not ready for streaming (status: ${data.status})` });
         }
-        if (!data.fName || !data.mimeType) {
+        if (!data.fName) {
             return res.status(500).json({ error: 'Audio metadata incomplete' });
         }
-        res.sendFile(path.join(CACHE_DIR, data.fName), { contentType: data.mimeType });
+        const filePath = path.join(CACHE_DIR, path.basename(data.fName));
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Audio file missing from storage' });
+        }
+        res.type(data.mimeType || 'audio/mpeg');
+        res.sendFile(filePath);
     } catch (error) {
         console.error('Error in audio route:', error);
         res.status(500).json({ error: 'Internal server error' });

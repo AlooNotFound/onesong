@@ -1,5 +1,5 @@
 import path from 'path';
-import { fileURLToPath, fileUrlToPath } from 'url';
+import { fileURLToPath } from 'url';
 
 const __fname = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__fname);

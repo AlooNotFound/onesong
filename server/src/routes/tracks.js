@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { reqAuth } from '../middleware/reqAuth.js';
+import { reqAuth, requireAuth } from '../middleware/auth.js';
 import { getTrackVote, setTrackVote } from "../votes/service.js";
 
 const router = Router();

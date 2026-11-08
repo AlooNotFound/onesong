@@ -1,4 +1,4 @@
-import {auth} from '../firebase.js';
+import { auth } from './firebase.js';
 
 async function authReq(url, options = {}) {
     const user = auth.currentUser;
@@ -21,9 +21,11 @@ async function authReq(url, options = {}) {
 }
 
 export async function getProfile() {
-    const data = await authenticatedRequest('/api/users/me');
+    const data = await authReq('/api/users/me');
     return data.profile;
 }
+
+export const getMyProfile = getProfile;
 
 export async function createProfile(profileData) {
     const data = await authReq('/api/users', {

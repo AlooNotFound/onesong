@@ -9,8 +9,8 @@ import subRouter from "./routes/submissions.js";
 import audioRouter from "./routes/audio.js";
 import stationRouter from "./routes/station.js";
 import tracksRouter from "./routes/tracks.js";
-import skipRouter from '../routes/skip.js';
-import historyRouter from '../routes/history.js';
+import skipRouter from './routes/skip.js';
+import historyRouter from './routes/history.js';
 import eventsRouter from './routes/events.js';
 import usersRouter from './routes/users.js';
 

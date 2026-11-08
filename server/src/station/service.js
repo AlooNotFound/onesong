@@ -1,5 +1,6 @@
 import { db, FieldVal, Timestamp } from "../firebase.js";
 import { selWeightedTrack } from "./selection.js";
+import { cleanPlayed } from "../audio/cleanup.js";
 
 const STATION_ID = 'global';
 const TRACK_Lim = 20;
@@ -51,7 +52,7 @@ export async function advanceStation({
     endReason = 'completed',
 } = {}) {
     const now = Date.now();
-    return db.runTx(async (tx) => {
+    return db.runTransaction(async (tx) => {
         const currSnap = await tx.get(stationRef);
         const curr = currSnap.exists ? currSnap.data() : null;
         const currentSongNumber = curr?.songNumber ?? curr?.songNum;
@@ -80,7 +81,7 @@ export async function advanceStation({
             const prevRef = db.collection('audio_cache').doc(curr.canonicalTrackId);
             prevCache = await tx.get(prevRef);
         }
-        const ready = db.collection('audio_cache').where('status', '==', 'ready').orderBy('addedAt', 'desc').limit(TRACK_Lim);
+        const ready = db.collection('audio_cache').where('status', '==', 'ready').limit(TRACK_Lim);
         const readySnap = await tx.get(ready);
         
         const candidates = readySnap.docs.filter((doc) => {
@@ -160,13 +161,16 @@ export async function advanceStation({
             artist: selected.track.artist ?? candidate.data().artist ?? 'Unknown',
             startedAt: Timestamp.fromMillis(now),
             endedAt: Timestamp.fromMillis(
-                now + Number(candidate.data().durationSeconds) * 1000
+                now + Number(track.duration ?? 0) * 1000
             ),
             likes: Number(selected.track.likes ?? 0),
             dislikes: Number(selected.track.dislikes ?? 0),
         });
         return serializeStation(next, now);
-    })
+    }).then((res) => {
+        cleanPlayed().catch(() => {});
+        return res;
+    });
 }
 
 export async function getStation() {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { measureClock } from "../lib/clock";
+import { measureClock } from "../lib/clock.js";
 
 async function fetchServerTime() {
     const res = await fetch('/api/time', { cache: 'no-store' });
@@ -12,6 +12,7 @@ export function useServerClock() {
     const offsetRef = useRef(0);
     const [ready, setReady] = useState(false);
     const now = useCallback(() => Date.now() + offsetRef.current, []);
+
     useEffect(() => {
         let cancelled = false;
         async function sync() {
@@ -20,8 +21,14 @@ export function useServerClock() {
                 if (cancelled) return;
                 offsetRef.current = offset;
                 setReady(true);
+            } catch (err) {
+                console.error("Failed to sync clock:", err);
             }
         }
+        sync();
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     return { now, ready };
