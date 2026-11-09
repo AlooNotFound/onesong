@@ -5,18 +5,27 @@ import { CACHE_DIR, MAX_FILE_SIZE } from './config.js';
 
 const YT_DLP_BIN = 'yt-dlp';
 
-export async function downloadYtAud({ vidId, canonicalTrackId, srcUrl }) {
-    if (!vidId && !srcUrl) {
+export async function downloadYtAud({ vidId, videoId, canonicalTrackId, srcUrl }) {
+    const id = vidId || videoId;
+    if (!id && !srcUrl) {
         throw new Error('video Id or source url required');
     }
-    const targetId = canonicalTrackId || `yt_${vidId}`;
-    const url = srcUrl || `https://www.youtube.com/watch?v=${vidId}`;
+    const targetId = canonicalTrackId || `yt_${id}`;
+    const url = srcUrl || `https://www.youtube.com/watch?v=${id}`;
     await fs.mkdir(CACHE_DIR, { recursive: true });
     const finalFName = `${targetId}.mp3`;
     const finalFPath = path.join(CACHE_DIR, finalFName);
     const cachedStat = await fs.stat(finalFPath).catch(() => null);
     if (cachedStat?.isFile() && cachedStat.size > 0) {
-        return { fPath: finalFPath, fName: finalFName, size: cachedStat.size, ext: '.mp3', mimeType: 'audio/mpeg', };
+        return {
+            fPath: finalFPath,
+            filePath: finalFPath,
+            fName: finalFName,
+            fName: finalFName,
+            size: cachedStat.size,
+            ext: '.mp3',
+            mimeType: 'audio/mpeg',
+        };
     }
     const tempPrefix = `tmp_${targetId}_${Date.now()}`;
     const tempPattern = path.join(CACHE_DIR, `${tempPrefix}.%(ext)s`);
@@ -46,7 +55,15 @@ export async function downloadYtAud({ vidId, canonicalTrackId, srcUrl }) {
             throw new Error('Downloaded audio file is empty or missing');
         }
         await fs.rename(tempMp3Path, finalFPath);
-        return { fPath: finalFPath, fName: finalFName, size: stat.size, ext: '.mp3', mimeType: 'audio/mpeg', };
+        return {
+            fPath: finalFPath,
+            filePath: finalFPath,
+            fName: finalFName,
+            fName: finalFName,
+            size: stat.size,
+            ext: '.mp3',
+            mimeType: 'audio/mpeg',
+        };
     } catch (err) {
         await fs.rm(tempMp3Path, { force: true }).catch(() => {});
         try {
@@ -150,6 +167,7 @@ export async function extractPLMeta(playlistId, maxEntries = 500) {
                 resolve({
                     title: data.title ?? null,
                     vidIds: [...new Set(vidIds)],
+                    videoIds: [...new Set(vidIds)],
                     tracks,
                     truncated,
                 });
@@ -162,3 +180,7 @@ export async function extractPLMeta(playlistId, maxEntries = 500) {
         });
     });
 }
+
+export const downloadYouTubeAudio = downloadYtAud;
+export const extractVideoMetadataWithoutApi = extractVIdMeta;
+export const extractPlaylistMetadataWithoutApi = extractPLMeta;

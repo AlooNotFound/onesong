@@ -13,10 +13,14 @@ import skipRouter from './routes/skip.js';
 import historyRouter from './routes/history.js';
 import eventsRouter from './routes/events.js';
 import usersRouter from './routes/users.js';
+import adminAudioRouter from './routes/adminAudio.js';
+import { startAudioWorker } from './audio/worker.js';
 
 const app = express();
 app.use(express.json({ limit: '16kb' }));
 app.use('/api/submissions', subRouter);
+app.use('/api/admin/audio', adminAudioRouter);
+app.use('/api/audio/admin', adminAudioRouter);
 app.use('/api/audio', audioRouter);
 app.use('/api/station', stationRouter);
 app.use('/api/tracks', tracksRouter);
@@ -102,4 +106,5 @@ if (fs.existsSync(dist)) {
 
 app.listen(3000, () => {
   console.log("Server is running on http://localhost:3000");
+  startAudioWorker();
 });

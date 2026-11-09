@@ -82,7 +82,7 @@ async function saveTrackForSub({ subRef, track, position }) {
             published: false,
             srcCount: 1,
             submissionCount: membershipExists ? 0 : 1,
-            representativeSourceId: track.providerTrackId,
+            repSourceId: track.providerTrackId,
             firstSubmittedAt: now,
             lastSubmittedAt: now,
         });

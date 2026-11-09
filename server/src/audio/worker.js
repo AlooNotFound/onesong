@@ -5,6 +5,7 @@ import { cleanPlayed, auditCacheStorage } from './cleanup.js';
 const POLL_MS = 5000;
 let stopping = false;
 let running = false;
+let timer = null;
 
 export async function poll() {
     if (stopping || running) return;
@@ -20,25 +21,34 @@ export async function poll() {
             console.log(`cache update: replenished ${replenished.added}, staged ${staged.processed}, cleaned ${cleaned}, audited ${audited} | Active: ${stats.active}/10 (Ready: ${stats.ready}, Playing: ${stats.playing}, Downloading: ${stats.downloading})`);
         }
     } catch (error) {
-        console.error('Error in poll:', error);
+        console.error('Error in audio poll:', error);
     } finally {
         running = false;
     }
 }
 
+export function startAudioWorker(pollInterval = POLL_MS) {
+    if (timer) return timer;
+    console.log(`audio background worker started (poll: ${pollInterval}ms)`);
+    poll().catch(() => {});
+    timer = setInterval(poll, pollInterval);
+    process.on('beforeExit', () => clearInterval(timer));
+    return timer;
+}
+
 async function shutdown(sig) {
-    console.log(`received ${sig}; shutting down`);
+    console.log(`received ${sig}; shutting down audio worker`);
     stopping = true;
+    if (timer) clearInterval(timer);
     while (running) {
         await new Promise((resolve) => setTimeout(resolve, 500));
     }
     process.exit(0);
 }
 
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-
-console.log('audio worker started');
-await poll();
-const timer = setInterval(poll, POLL_MS);
-process.on('beforeExit', () => clearInterval(timer));
+// Standalone execution support
+if (process.argv[1] && process.argv[1].endsWith('worker.js')) {
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    startAudioWorker();
+}

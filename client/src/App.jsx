@@ -10,6 +10,7 @@ import SyncedPlayer from './components/SyncedAudioPlayer.jsx';
 import TrackVote from './components/TrackVote.jsx';
 import { useMyProfile } from './hooks/useMyProfile.js';
 import ProfileSetup from './components/ProfileSetup.jsx';
+import AdminAudHandling from './components/AdminAudHandling.jsx';
 
 export default function App() {
   const clock = useServerClock();
@@ -32,6 +33,7 @@ export default function App() {
         {error ? 'Lost the signal. Retrying…' : ''}
       </p>
       <SubmitSrc />
+      <AdminAudHandling />
     </main>
   );
 }

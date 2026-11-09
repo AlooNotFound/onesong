@@ -20,7 +20,7 @@ for (const doc of tracksSnap.docs) {
     });
     if (!canonicalGroups.has(norm.canonicalId)) {
         canonicalGroups.set(norm.canonicalId, {
-            ...norm, srcCount: 0, representativeSrcId: data.providerTrackId, firstSubmittedAt: data.firstSubmittedAt ?? data.createdAt ?? null, lastSubmittedAt: data.lastSubmittedAt ?? data.createdAt ?? null,
+            ...norm, srcCount: 0, repSrcId: data.providerTrackId, firstSubmittedAt: data.firstSubmittedAt ?? data.createdAt ?? null, lastSubmittedAt: data.lastSubmittedAt ?? data.createdAt ?? null,
         });
     }
     const group = canonicalGroups.get(norm.canonicalId);
@@ -96,7 +96,7 @@ for (const [canonicalId, group] of canonicalGroups.entries()) {
               published: false,
               srcCount: group.srcCount,
               submissionCount: canonicalSubSets.get(canonicalId)?.size ?? 0,
-              representativeSourceId: group.representativeSrcId,
+              repSourceId: group.repSrcId,
               firstSubmittedAt: group.firstSubmittedAt ?? null,
               lastSubmittedAt: group.lastSubmittedAt ?? null,
             }, { merge: true }

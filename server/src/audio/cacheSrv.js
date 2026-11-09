@@ -67,7 +67,7 @@ export async function replenishCache() {
     for (const doc of selected) {
         const canonicalId = doc.id;
         const data = doc.data();
-        const repId = data.representativeSourceId || data.representativeSrcId || data.providerTrackId;
+        const repId = data.repSourceId || data.repSrcId || data.providerTrackId;
         if (!repId) {
             continue;
         }
@@ -114,7 +114,7 @@ export async function replenishCache() {
 
             await cacheRef.update({
                 status: 'ready',
-                fName: dlRes.fileName,
+                fName: dlRes.fName,
                 fSize: dlRes.size,
                 fExtension: dlRes.ext,
                 mimeType: dlRes.mimeType,
@@ -123,7 +123,7 @@ export async function replenishCache() {
                 error: null,
             });
             added++;
-            console.log(`cached ${title} (${dlRes.fileName}, ${(dlRes.size / (1024 * 1024)).toFixed(2)} MB)`);
+            console.log(`cached ${title} (${dlRes.fName}, ${(dlRes.size / (1024 * 1024)).toFixed(2)} MB)`);
         } catch (err) {
             console.error(`Failed to download ${canonicalId} (${repId}):`, err.message);
             await cacheRef.update({
