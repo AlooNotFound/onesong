@@ -13,9 +13,9 @@ router.post('/', requireAuth, async (req, res) => {
       });
     }
     const sub = await createSub({ url, uid: req.user.uid, });
-    return res.status(202).json({ submission: sub });
+    return res.status(202).json({ submission: sub, sub });
   } catch (err) {
-    const code = err instanceof SubmissionError ? err.statusCode : 500;
+    const code = (err instanceof SubmitErr || err.name === 'SubmissionError') ? (err.code || err.statusCode || 400) : 500;
     return res.status(code).json({
       error: err.message || 'Could not process submission.',
       submissionId: err.submissionId ?? null,
@@ -58,10 +58,10 @@ router.get('/:id', async (req, res) => {
                 error: 'Submission not found',
             });
         }
-        return res.status(200).json({ submission: sub });
-    } catch {
+        return res.status(200).json({ submission: sub, sub });
+    } catch (err) {
         return res.status(500).json({
-            error: 'Failed to fetch submission',
+            error: err.message || 'Failed to fetch submission',
         });
     }
 })

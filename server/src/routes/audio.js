@@ -27,11 +27,49 @@ router.get('/:canonicalTrackId', async (req, res) => {
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: 'Audio file missing from storage' });
         }
-        res.type(data.mimeType || 'audio/mpeg');
-        res.sendFile(filePath);
+
+        const stat = fs.statSync(filePath);
+        const totalSize = stat.size;
+        const mimeType = data.mimeType || 'audio/mpeg';
+        const range = req.headers.range;
+        if (range) {
+            const parts = range.replace(/bytes=/, '').split('-');
+            const start = parseInt(parts[0], 10);
+            const requestedEnd = parts[1] ? parseInt(parts[1], 10) : NaN;
+            let end;
+            if (Number.isFinite(requestedEnd)) {
+                end = Math.min(requestedEnd, totalSize - 1);
+            } else if (req.query.chunkSize) {
+                const customChunk = parseInt(req.query.chunkSize, 10);
+                end = Math.min(start + customChunk - 1, totalSize - 1);
+            } else {
+                end = totalSize - 1;
+            }
+            const contentLength = (end - start) + 1;
+            res.writeHead(206, {
+                'Content-Range': `bytes ${start}-${end}/${totalSize}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': contentLength,
+                'Content-Type': mimeType,
+                'Cache-Control': 'public, max-age=86400',
+            });
+
+            const stream = fs.createReadStream(filePath, { start, end });
+            stream.pipe(res);
+        } else {
+            res.writeHead(200, {
+                'Content-Length': totalSize,
+                'Content-Type': mimeType,
+                'Accept-Ranges': 'bytes',
+                'Cache-Control': 'public, max-age=86400',
+            });
+            fs.createReadStream(filePath).pipe(res);
+        }
     } catch (error) {
         console.error('Error in audio route:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 });
 

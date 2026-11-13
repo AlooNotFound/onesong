@@ -4,10 +4,21 @@ import { getProfile, createProfile, updateProfile, changeUsername, getPublicProf
 
 const router = Router();
 
+router.get('/me', reqAuth, async (req, res) => {
+    try {
+        const profile = await getProfile(req.user.uid);
+        res.json({ profile: profile || null });
+    } catch (err) {
+        res.status(err.status ?? 500).json({
+            error: err.message ?? 'Failed to retrieve profile',
+        });
+    }
+});
+
 router.get('/', reqAuth, async (req, res) => {
     try {
         const profile = await getProfile(req.user.uid);
-        res.json(profile);
+        res.json({ profile: profile || null });
     } catch (err) {
         res.status(err.status ?? 500).json({
             error: err.message ?? 'Failed to retrieve profile',

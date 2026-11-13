@@ -16,7 +16,43 @@ export async function acquireTrackAudio(canonicalTrackId) {
         throw Object.assign(new Error(`not found canonical track '${canonicalTrackId}'`), { status: 404 });
     }
     const cData = canonicalSnap.data();
-    const repId = cData.repSourceId || cData.repSrcId || cData.providerTrackId;
+    let repId = cData.repSourceId || cData.repSrcId || cData.providerTrackId;
+    let title = cData.title;
+    let artist = cData.artist;
+    let duration = cData.duration ?? null;
+    let srcUrl = cData.srcUrl ?? null;
+
+    if (!repId) {
+        const qSnap = await db.collection('tracks').where('canonicalTrackId', '==', canonicalTrackId).limit(1).get();
+        if (!qSnap.empty) {
+            const trackDoc = qSnap.docs[0].data();
+            repId = trackDoc.providerTrackId;
+            title = title || trackDoc.title;
+            artist = artist || trackDoc.artist;
+            duration = duration ?? trackDoc.duration;
+            srcUrl = srcUrl || trackDoc.srcUrl;
+        } else {
+            const directSnap = await db.collection('tracks').doc(canonicalTrackId).get();
+            if (directSnap.exists) {
+                const trackDoc = directSnap.data();
+                repId = trackDoc.repSourceId || trackDoc.providerTrackId;
+                title = title || trackDoc.title;
+                artist = artist || trackDoc.artist;
+                duration = duration ?? trackDoc.duration;
+                srcUrl = srcUrl || trackDoc.srcUrl;
+            }
+        }
+        if (repId) {
+            await canonicalRef.set({
+                repSourceId: repId,
+                title: title || 'Unknown Title',
+                artist: artist || 'Unknown Artist',
+                duration,
+                srcUrl,
+            }, { merge: true });
+        }
+    }
+
     if (!repId) {
         throw Object.assign(new Error(`no src video ID found for '${canonicalTrackId}'`), { status: 400 });
     }
@@ -27,10 +63,10 @@ export async function acquireTrackAudio(canonicalTrackId) {
             srcData = srcSnap.data();
         }
     } catch {}
-    const title = cData.title || srcData?.title || 'Unknown Title';
-    const artist = cData.artist || srcData?.artist || 'Unknown Artist';
-    const duration = srcData?.duration ?? cData.duration ?? null;
-    const srcUrl = srcData?.srcUrl || `https://www.youtube.com/watch?v=${repId}`;
+    title = title || srcData?.title || 'Unknown Title';
+    artist = artist || srcData?.artist || 'Unknown Artist';
+    duration = duration ?? srcData?.duration ?? null;
+    srcUrl = srcUrl || srcData?.srcUrl || `https://www.youtube.com/watch?v=${repId}`;
     const cacheRef = db.collection('audio_cache').doc(canonicalTrackId);
     await cacheRef.set({ canonicalTrackId, srcTrackId: repId, provider: 'youtube', providerTrackId: repId, title, artist, duration, status: 'downloading', fName: null, fSize: null, fExtension: null, mimeType: null, error: null, acquiredVia: 'admin_acquisition', updatedAt: FieldVal.serverTimestamp(), }, { merge: true });
     try {
@@ -99,22 +135,46 @@ export async function stageUploadedAudio({ canonicalTrackId, buffer, fName = 'au
 }
 
 export async function listAcquisitionTracks({ statusFilter = null, limit = 100 } = {}) {
-    const canonicalSnap = await db.collection('canonical_tracks').limit(limit).get();
-    const cacheSnap = await db.collection('audio_cache').get();
+    const [canonicalSnap, cacheSnap, tracksSnap] = await Promise.all([
+        db.collection('canonical_tracks').limit(limit).get(),
+        db.collection('audio_cache').get(),
+        db.collection('tracks').limit(200).get(),
+    ]);
     const cacheMap = new Map();
     for (const doc of cacheSnap.docs) {
         cacheMap.set(doc.id, doc.data());
+    }
+
+    const tracksMap = new Map();
+    for (const doc of tracksSnap.docs) {
+        const d = doc.data();
+        if (d.canonicalTrackId) tracksMap.set(d.canonicalTrackId, d);
+        tracksMap.set(doc.id, d);
     }
 
     const tracks = [];
     for (const doc of canonicalSnap.docs) {
         const cData = doc.data();
         const cacheData = cacheMap.get(doc.id);
+        const fallback = tracksMap.get(doc.id);
         const status = cacheData?.status || 'pending';
         if (statusFilter && status !== statusFilter) {
             continue;
         }
-        tracks.push({ canonicalTrackId: doc.id, title: cData.title || cacheData?.title || 'Unknown', artist: cData.artist || cacheData?.artist || 'Unknown', duration: cData.duration ?? cacheData?.duration ?? null, repSourceId: cData.repSourceId || cData.repSrcId || null, status, fName: cacheData?.fName || null, fSize: cacheData?.fSize || null, error: cacheData?.error || null, acquiredVia: cacheData?.acquiredVia || null, readyAt: cacheData?.readyAt?.toMillis?.() ?? null, audioUrl: ['ready', 'playing'].includes(status) ? `/api/audio/${doc.id}` : null, });
+        tracks.push({ 
+            canonicalTrackId: doc.id, 
+            title: cData.title || cacheData?.title || fallback?.title || 'Unknown', 
+            artist: cData.artist || cacheData?.artist || fallback?.artist || 'Unknown', 
+            duration: cData.duration ?? cacheData?.duration ?? fallback?.duration ?? null, 
+            repSourceId: cData.repSourceId || cData.repSrcId || fallback?.repSourceId || fallback?.providerTrackId || null, 
+            status, 
+            fName: cacheData?.fName || null, 
+            fSize: cacheData?.fSize || null, 
+            error: cacheData?.error || null, 
+            acquiredVia: cacheData?.acquiredVia || null, 
+            readyAt: cacheData?.readyAt?.toMillis?.() ?? null, 
+            audioUrl: ['ready', 'playing'].includes(status) ? `/api/audio/${doc.id}` : null, 
+        });
     }
     const priority = { pending: 1, failed: 2, downloading: 3, ready: 4, playing: 5, played: 6 };
     tracks.sort((a, b) => (priority[a.status] || 99) - (priority[b.status] || 99));

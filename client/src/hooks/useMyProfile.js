@@ -1,13 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase.js';
 import { getMyProfile } from '../lib/users.js';
 
 export function useMyProfile() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(auth.currentUser);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const refreshProfile = useCallback(async () => {
+    if (!auth.currentUser) {
+      setProfile(null);
+      setLoading(false);
+      return null;
+    }
+    setLoading(true);
+    try {
+      const res = await getMyProfile();
+      setProfile(res);
+      setError('');
+      return res;
+    } catch (err) {
+      setError(err.message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,8 +56,11 @@ export function useMyProfile() {
         }
       }
     });
-    return () => { cancelled = true; unsubscribe(); };
+    return () => { 
+      cancelled = true; 
+      unsubscribe(); 
+    };
   }, []);
 
-  return { user, profile, loading, error, setProfile,};
+  return { user, profile, loading, error, setProfile, refreshProfile };
 }

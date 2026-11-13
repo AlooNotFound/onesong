@@ -32,7 +32,7 @@ async function saveTrackForSub({ subRef, track, position }) {
     const norm = normalizeTrack(track);
     const srcRef = db.collection('tracks').doc(`yt_${track.providerTrackId}`);
     const membershipRef = subRef.collection('tracks').doc(track.providerTrackId);
-    const canonicalRef = db.collection('tracks').doc(norm.canonicalId);
+    const canonicalRef = db.collection('canonical_tracks').doc(norm.canonicalId);
     await db.runTransaction(async (tx) => {
         const [srcSnap, canonicalSnap, membershipSnap] = await Promise.all([
             tx.get(srcRef),
@@ -70,35 +70,34 @@ async function saveTrackForSub({ subRef, track, position }) {
         ),
       }, { merge: true });
 
-      if (!canonicalSnap.exists || srcChangedCanonical) {
-        tx.create(canonicalRef, {
-            title: norm.title,
-            artist: norm.artist,
-            normTitle: norm.normTitle,
-            normArtist: norm.normArtist,
-            version: norm.version,
-            canDeduplicate: norm.canDeduplicate,
-            deduplicationMethod: norm.deduplicationMethod,
-            published: false,
-            srcCount: 1,
-            submissionCount: membershipExists ? 0 : 1,
-            repSourceId: track.providerTrackId,
-            firstSubmittedAt: now,
-            lastSubmittedAt: now,
-        });
-      } else {
-        const updates = {
-            lastSubmittedAt: now,
-        };
-        if (!srcExists || srcChangedCanonical) {
-            updates.srcCount = FieldVal.increment(1);
-        }
+      const canonicalData = {
+          canonicalTrackId: norm.canonicalId,
+          title: norm.title,
+          artist: norm.artist,
+          normTitle: norm.normTitle,
+          normArtist: norm.normArtist,
+          version: norm.version,
+          canDeduplicate: norm.canDeduplicate,
+          deduplicationMethod: norm.deduplicationMethod,
+          published: true,
+          repSourceId: track.providerTrackId,
+          duration: track.duration ?? null,
+          thumbnailUrl: track.thumbnailUrl ?? null,
+          srcUrl: track.srcUrl ?? null,
+          lastSubmittedAt: now,
+      };
 
-        if (!membershipExists) {
-            updates.submissionCount = FieldVal.increment(1);
-        }
-        tx.update(canonicalRef, updates);
+      if (!canonicalSnap.exists) {
+          canonicalData.firstSubmittedAt = now;
+          canonicalData.srcCount = 1;
+          canonicalData.submissionCount = membershipExists ? 0 : 1;
+      } else {
+          canonicalData.srcCount = FieldVal.increment(!srcExists || srcChangedCanonical ? 1 : 0);
+          canonicalData.submissionCount = FieldVal.increment(!membershipExists ? 1 : 0);
       }
+
+      tx.set(canonicalRef, canonicalData, { merge: true });
+
       if (!membershipExists) {
         tx.create(membershipRef, {
             providerTrackId: track.providerTrackId,
@@ -130,6 +129,9 @@ export async function createSubmission({ url, uid }) {
   });
   try {
     await enqueueIngestion({ subId: subRef.id, uid, });
+    processIngestionJob(subRef.id).catch((err) => {
+      console.warn('bg ingestion error:', err.message);
+    });
   } catch (err) {
     await subRef.update({ status: 'failed', error: err.message, completedAt: FieldVal.serverTimestamp(), }).catch(() => {});
     throw err;
@@ -165,9 +167,9 @@ export async function getSub(subId) {
     }
 
     const tracksById = new Map(
-        tracksSnaps.filter((doc) => doc.exists).map((doc) => [doc.id, doc.data()])
+        trackSnaps.filter((doc) => doc.exists).map((doc) => [doc.id, doc.data()])
     );
-    const tracks = trackSnaps.docs.map((membership) => {
+    const tracks = tracksSnap.docs.map((membership) => {
         const data =  membership.data();
         const track = tracksById.get(`yt_${membership.id}`);
         if (!track) return null;
@@ -252,8 +254,8 @@ export async function processIngestionJob(subId) {
   await subRef.update({
     status: 'completed',
     itemCount: uniqueTracks.length,
-    nextCursor: res.nextCursor,
-    truncated: res.truncated,
+    nextCursor: res.nextCursor ?? null,
+    truncated: Boolean(res.truncated),
     error: null,
     completedAt: FieldVal.serverTimestamp(),
     updatedAt: FieldVal.serverTimestamp(),
@@ -263,6 +265,6 @@ export async function processIngestionJob(subId) {
     subId,
     status: 'completed',
     itemCount: uniqueTracks.length,
-    truncated: result.truncated,
+    truncated: Boolean(res.truncated),
   };
 }

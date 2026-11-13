@@ -1,9 +1,39 @@
 import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import { spawn } from 'child_process';
 import path from 'path';
+import os from 'os';
 import { CACHE_DIR, MAX_FILE_SIZE } from './config.js';
 
-const YT_DLP_BIN = 'yt-dlp';
+function getYtDlpBin() {
+    if (process.env.YT_DLP_PATH && existsSync(process.env.YT_DLP_PATH)) {
+        return process.env.YT_DLP_PATH;
+    }
+    const home = os.homedir();
+    const candidates = [
+        path.join(home, '.local/bin/yt-dlp'),
+        path.join(home, 'bin/yt-dlp'),
+        '/usr/local/bin/yt-dlp',
+        '/usr/bin/yt-dlp',
+    ];
+    for (const p of candidates) {
+        if (existsSync(p)) return p;
+    }
+    return 'yt-dlp';
+}
+
+const YT_DLP_BIN = getYtDlpBin();
+const SPAWN_ENV = {
+    ...process.env,
+    PATH: [
+        path.join(os.homedir(), '.local/bin'),
+        path.join(os.homedir(), 'bin'),
+        '/usr/local/bin',
+        '/usr/bin',
+        '/bin',
+        process.env.PATH,
+    ].filter(Boolean).join(':'),
+};
 
 export async function downloadYtAud({ vidId, videoId, canonicalTrackId, srcUrl }) {
     const id = vidId || videoId;
@@ -31,10 +61,10 @@ export async function downloadYtAud({ vidId, videoId, canonicalTrackId, srcUrl }
     const tempPattern = path.join(CACHE_DIR, `${tempPrefix}.%(ext)s`);
     const tempMp3Path = path.join(CACHE_DIR, `${tempPrefix}.mp3`);
 
-    const args = [ '--no-warnings', '--no-playlist', '--js-runtimes', 'node:node', '--remote-components', 'ejs:github', '-x', '--audio-format', 'mp3', '--audio-quality', '0', '--max-filesize', `${MAX_FILE_SIZE}`, '-o', tempPattern, url, ];
+    const args = [ '--no-warnings', '--no-playlist', '-x', '--audio-format', 'mp3', '--audio-quality', '0', '--max-filesize', `${MAX_FILE_SIZE}`, '-o', tempPattern, url, ];
     try {
         await new Promise((resolve, reject) => {
-            const proc = spawn(YT_DLP_BIN, args);
+            const proc = spawn(YT_DLP_BIN, args, { env: SPAWN_ENV });
             let stderrData = '';
             proc.stderr.on('data', (d) => {
                 stderrData += d.toString();
@@ -82,7 +112,7 @@ export async function extractVIdMeta(vidId) {
     const url = `https://www.youtube.com/watch?v=${vidId}`;
     const args = [ '--dump-single-json', '--no-warnings', '--skip-download', '--js-runtimes', 'node:node', url, ];
     return new Promise((resolve, reject) => {
-        const proc = spawn(YT_DLP_BIN, args);
+        const proc = spawn(YT_DLP_BIN, args, { env: SPAWN_ENV });
         let stdoutData = '';
         let stderrData = '';
         proc.stdout.on('data', (d) => {
@@ -99,6 +129,7 @@ export async function extractVIdMeta(vidId) {
                 const info = JSON.parse(stdoutData);
                 resolve({
                     id: info.id || vidId,
+                    providerTrackId: info.id || vidId,
                     title: info.title ?? null,
                     description: info.description ?? null,
                     artist: info.artist ?? info.channel ?? info.uploader ?? null,
@@ -130,7 +161,7 @@ export async function extractPLMeta(playlistId, maxEntries = 500) {
     ];
 
     return new Promise((resolve, reject) => {
-        const proc = spawn(YT_DLP_BIN, args);
+        const proc = spawn(YT_DLP_BIN, args, { env: SPAWN_ENV });
 
         let stdoutData = '';
         let stderrData = '';
@@ -155,6 +186,7 @@ export async function extractPLMeta(playlistId, maxEntries = 500) {
                     vidIds.push(item.id);
                     tracks.push({
                         id: item.id,
+                        providerTrackId: item.id,
                         title: item.title ?? null,
                         description: item.description ?? null,
                         artist: item.artist ?? item.channel ?? item.uploader ?? null,

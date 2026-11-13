@@ -1,7 +1,9 @@
-import {useState} from "react";
-import { auth } from "../lib/firebase";
+import { useState, useEffect } from "react";
+import { auth } from "../lib/firebase.js";
+import { onAuthStateChanged } from "firebase/auth";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function getSub(subId, token) {
     const resp = await fetch(`/api/submissions/${subId}`, {
         headers: {
@@ -12,7 +14,7 @@ async function getSub(subId, token) {
     if (!resp.ok) {
         throw new Error(data.error || 'Failed to fetch submission.');
     }
-    return data.sub;
+    return data.sub || data.submission;
 }
 
 export default function SubmitSrc() {
@@ -20,14 +22,22 @@ export default function SubmitSrc() {
     const [status, setStatus] = useState('idle');
     const [message, setMessage] = useState('');
     const [sub, setSub] = useState(null);
+    const [currentUser, setCurrentUser] = useState(auth.currentUser);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setCurrentUser(user);
+        });
+        return unsubscribe;
+    }, []);
 
     async function handleSubmit(e) {
         e.preventDefault();
         if (!url.trim() || status === 'loading') return;
-        const user = auth.currUser;
+        const user = auth.currentUser;
         if (!user) {
             setStatus('error');
-            setMessage('You must be logged in to submit a source.');
+            setMessage('You must be logged in to submit a source. Please sign in above.');
             return;
         }
         setStatus('loading');
@@ -47,24 +57,25 @@ export default function SubmitSrc() {
             if (!resp.ok) {
                 throw new Error(data.error || 'Failed to submit source.');
             }
-            setSub(data.sub);
+            const created = data.sub || data.submission;
+            setSub(created);
             setMessage('Submission queued. Processing...');
+            setUrl('');
+
             for (let i = 0; i < 60; i++) {
                 await sleep(2000);
-                const curr = await getSub( data.sub.id, token );
+                const curr = await getSub(created.id, token);
                 setSub(curr);
                 if (curr.status === 'completed') {
                     setStatus('success');
-                    setMessage(`Successfully added ${curr.itemCount} tracks to the mix.`);
+                    setMessage(`Successfully added ${curr.itemCount || 1} tracks to the mix.`);
                     return;
                 }
                 if (curr.status === 'failed') {
-                    throw new Error(
-                        curr.error || 'Failed to process submission.'
-                    );
+                    throw new Error(curr.error || 'Failed to process submission.');
                 }
                 setMessage(
-                    curr.status === 'processing'? 'Importing tracks...' : 'Waiting for an ingestion worker...'
+                    curr.status === 'processing' ? 'Importing tracks...' : 'Waiting for ingestion...'
                 );
             }
             setStatus('pending');
@@ -74,26 +85,40 @@ export default function SubmitSrc() {
             setMessage(err.message);
         }
     }
+
     return (
-        <section className="submit-src">
+        <section className="card submit-src">
             <div className="submit-src_header">
                 <h2>Put smtg in the mix</h2>
                 <p>Submit a YouTube video or playlist to be added to the mix.</p>
             </div>
-            <form onSubmit={handleSubmit}>
-                <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Enter YouTube URL" required disabled={status === 'loading'} />
-                <button type="submit" disabled={status === 'loading'}>Submit</button>
-                {status === 'loading' && <p>Submitting...</p>}
-                {status === 'error' && <p className="error">{message}</p>}
+            {!currentUser && (
+                <p className="profile-setup__error" style={{ marginBottom: 12 }}>
+                    Please sign in above to submit songs.
+                </p>
+            )}
+            <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input 
+                    type="url" 
+                    value={url} 
+                    onChange={(e) => setUrl(e.target.value)} 
+                    placeholder="Enter YouTube URL (e.g. https://www.youtube.com/watch?v=...)" 
+                    required 
+                    disabled={status === 'loading' || !currentUser} 
+                    style={{ flex: 1, minWidth: 220 }}
+                />
+                <button type="submit" disabled={status === 'loading' || !currentUser}>
+                    {status === 'loading' ? 'Submitting...' : 'Submit'}
+                </button>
             </form>
             {message && (
-                <p className={`submit-source__message submit-source__message--${status}`} role="status">
+                <p className={`submit-source__message submit-source__message--${status}`} role="status" style={{ marginTop: 10 }}>
                     {message}
                 </p>
             )}
             {sub && (
-                <p className="submit-source__message">
-                    Status: {sub.status}
+                <p className="submit-source__message" style={{ marginTop: 6, opacity: 0.85 }}>
+                    Status: <strong>{sub.status}</strong>
                     {sub.itemCount > 0 && ` · ${sub.itemCount} tracks`}
                 </p>
             )}

@@ -14,9 +14,14 @@ import historyRouter from './routes/history.js';
 import eventsRouter from './routes/events.js';
 import usersRouter from './routes/users.js';
 import adminAudioRouter from './routes/adminAudio.js';
-import { startAudioWorker } from './audio/worker.js';
+import { getStation, getStationSnap } from './station/service.js';
 
 const app = express();
+
+process.on('unhandledRejection', (reason) => {
+  console.warn('Unhandled Rejection:', reason?.message || reason);
+});
+
 app.use(express.json({ limit: '16kb' }));
 app.use('/api/submissions', subRouter);
 app.use('/api/admin/audio', adminAudioRouter);
@@ -43,12 +48,17 @@ app.get("/api/health", (req, res) => {
 
 app.get('/api/time', (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ serverTime: station.now() });
+  res.json({ serverTime: Date.now() });
 });
 
-app.get('/api/now', (req, res) => {
+app.get('/api/now', async (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json(station.snapshot());
+  try {
+    const s = await getStation();
+    res.json(s);
+  } catch {
+    res.json(await getStationSnap().catch(() => ({ status: 'waiting' })));
+  }
 });
 
 app.post('/api/listeners/heartbeat', (req, res) => {
@@ -104,7 +114,9 @@ if (fs.existsSync(dist)) {
     });
 }
 
-app.listen(3000, () => {
-  console.log("Server is running on http://localhost:3000");
-  startAudioWorker();
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
+  console.log(`Server is running on http://${HOST}:${PORT}`);
 });

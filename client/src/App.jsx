@@ -24,10 +24,9 @@ export default function App() {
         <h1>OneSong</h1>
         <p className="tagline"> One song. Everyone. Right now.</p>
       </header>
-      <ProfileSetup onComplete={setProfile}/>
+      <ProfileSetup user={user} profile={profile} loading={loading} onComplete={setProfile} />
       <NowPlaying station={station} nowMs={nowMs}/>
-      {/* <YouTubePlayer station={station} nowMs={nowMs}/> */}
-      <SyncedPlayer station={station} nowMs={nowMs}/>
+      <SyncedPlayer station={station} nowMs={nowMs} clock={clock} />
       <SkipVote station={station} />
       <p className="status" role="status" aria-live="polite">
         {error ? 'Lost the signal. Retrying…' : ''}

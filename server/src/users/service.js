@@ -50,6 +50,7 @@ export async function createProfile(uid, inp) {
             new Error('Bio cannod exceed 160 chars'), { status: 400 }
         );
     }
+    const photoURL = inp.photoURL ? String(inp.photoURL).trim() : null;
     const userRef = db.collection('users').doc(uid);
     const usernameRef = db.collection('usernames').doc(usernameLower);
     return db.runTransaction(async (tx) => {
