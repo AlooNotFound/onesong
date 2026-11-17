@@ -28,6 +28,8 @@ function serializeStation(data, serverTime = Date.now()) {
     if (startedAt === null || endsAt === null) {
         throw new Error('Invalid station data: missing timestamps');
     }
+    const repSourceId = data.repSourceId || null;
+    const thumbnailUrl = data.thumbnailUrl || (repSourceId ? `https://img.youtube.com/vi/${repSourceId}/hqdefault.jpg` : null);
     return {
         status: 'playing',
         songNum: data.songNum,
@@ -36,7 +38,9 @@ function serializeStation(data, serverTime = Date.now()) {
             canonicalTrackId: data.canonicalTrackId,
             title: data.title,
             artist: data.artist,
-            duration: data.duration,
+            dur: data.dur,
+            repSourceId,
+            thumbnailUrl,
             audUrl: `/api/audio/${data.canonicalTrackId}`,
         },
         startedAt,
@@ -99,15 +103,16 @@ export async function advanceStation({
                 const ready = db.collection('audio_cache').where('status', '==', 'ready').limit(TRACK_Lim);
                 const readySnap = await tx.get(ready);
                 let candidates = readySnap.docs.filter((doc) => {
-                    const duration = doc.data().duration;
-                    return Number.isFinite(duration) && duration > 0;
+                    const dur = doc.data().dur;
+                    return Number.isFinite(dur) && dur > 0;
                 });
                 const docsToRecycle = [];
                 if (candidates.length === 0) {
                     const allCacheSnap = await tx.get(db.collection('audio_cache').limit(TRACK_Lim));
                     for (const doc of allCacheSnap.docs) {
                         const d = doc.data();
-                        if (d.duration > 0 && d.status !== 'downloading' && d.status !== 'failed') {
+                        const dur = d.dur;
+                        if (dur > 0 && d.status !== 'downloading' && d.status !== 'failed') {
                             docsToRecycle.push(doc);
                             candidates.push(doc);
                         }
@@ -130,8 +135,8 @@ export async function advanceStation({
                     tx.update(doc.ref, { status: 'ready', updatedAt: FieldVal.serverTimestamp() });
                 }
                 for (const doc of readySnap.docs) {
-                    const duration = doc.data().duration;
-                    if (!Number.isFinite(duration) || duration <= 0) {
+                    const dur = doc.data().dur;
+                    if (!Number.isFinite(dur) || dur <= 0) {
                         tx.update(doc.ref, { status: 'failed', updatedAt: FieldVal.serverTimestamp() });
                     }
                 }
@@ -157,7 +162,7 @@ export async function advanceStation({
                         canonicalTrackId: null,
                         title: null,
                         artist: null,
-                        duration: null,
+                        dur: null,
                         startedAt: null,
                         endsAt: null,
                         updatedAt: FieldVal.serverTimestamp(),
@@ -166,19 +171,23 @@ export async function advanceStation({
                     return serializeStation(waiting, now);
                 }
                 const track = candidate.data();
-                const duration = track.duration;
+                const dur = track.dur;
                 const startedAt = Timestamp.fromMillis(now);
-                const endsAt = Timestamp.fromMillis(now + duration * 1000);
+                const endsAt = Timestamp.fromMillis(now + dur * 1000);
                 tx.update(candidate.ref, { status: 'playing', startedAt, endsAt, updatedAt: FieldVal.serverTimestamp() });
                 const selectedArtist = String( selected.track.artist ?? '').trim().toLowerCase();
                 const nextRecentArtists = selectedArtist ? [ selectedArtist, ...recentArtists.filter((artist) => artist !== selectedArtist), ].slice(0, 5) : recentArtists;
+                const repSourceId = selected.track.repSourceId || track.srcTrackId || track.providerTrackId || null;
+                const thumbnailUrl = selected.track.thumbnailUrl || (repSourceId ? `https://img.youtube.com/vi/${repSourceId}/hqdefault.jpg` : null);
                 const next = {
                     status: 'playing',
                     songNum: nextSongNum,
                     canonicalTrackId: track.canonicalTrackId,
                     title: track.title,
                     artist: track.artist,
-                    duration: track.duration,
+                    dur,
+                    repSourceId,
+                    thumbnailUrl,
                     startedAt,
                     endsAt,
                     recentArtists: nextRecentArtists,
@@ -195,7 +204,7 @@ export async function advanceStation({
                     artist: selected.track.artist ?? candidate.data().artist ?? 'Unknown',
                     startedAt: Timestamp.fromMillis(now),
                     endedAt: Timestamp.fromMillis(
-                        now + Number(track.duration ?? 0) * 1000
+                        now + Number(dur ?? 0) * 1000
                     ),
                     likes: Number(selected.track.likes ?? 0),
                     dislikes: Number(selected.track.dislikes ?? 0),

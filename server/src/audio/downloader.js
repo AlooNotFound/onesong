@@ -127,13 +127,14 @@ export async function extractVIdMeta(vidId) {
             }
             try {
                 const info = JSON.parse(stdoutData);
+                const dur = typeof info.duration === 'number' ? Math.round(info.duration) : null;
                 resolve({
                     id: info.id || vidId,
                     providerTrackId: info.id || vidId,
                     title: info.title ?? null,
                     description: info.description ?? null,
                     artist: info.artist ?? info.channel ?? info.uploader ?? null,
-                    duration: typeof info.duration === 'number' ? Math.round(info.duration) : null,
+                    dur,
                     thumbnailUrl: info.thumbnail ?? (info.thumbnails?.[0]?.url) ?? null,
                     srcUrl: `https://www.youtube.com/watch?v=${info.id || vidId}`,
                 });
@@ -184,13 +185,14 @@ export async function extractPLMeta(playlistId, maxEntries = 500) {
                 for (const item of rawEntries) {
                     if (!item || !item.id) continue;
                     vidIds.push(item.id);
+                    const dur = typeof item.duration === 'number' ? Math.round(item.duration) : null;
                     tracks.push({
                         id: item.id,
                         providerTrackId: item.id,
                         title: item.title ?? null,
                         description: item.description ?? null,
                         artist: item.artist ?? item.channel ?? item.uploader ?? null,
-                        duration: typeof item.duration === 'number' ? Math.round(item.duration) : null,
+                        dur,
                         thumbnailUrl: item.thumbnail ?? (item.thumbnails?.[0]?.url) ?? null,
                         srcUrl: `https://www.youtube.com/watch?v=${item.id}`,
                     });

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { auth } from "../lib/firebase.js";
 
-export default function SkipVote() {
+export default function SkipVote({ onRequireLogin }) {
     const [skip, setSkip] = useState({votes: 0, myVote: false});
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [err, setErr] = useState(null);
 
     async function handleSkip() {
@@ -14,6 +14,7 @@ export default function SkipVote() {
             const user = auth.currentUser;
             if (!user) {
                 setErr('Sign in to vote');
+                onRequireLogin?.();
                 return;
             }
             const token = await user.getIdToken();

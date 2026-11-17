@@ -15,10 +15,11 @@ export class Station {
         const song = this.#pickNext();
         this.played.add(song.id);
         this.songNumber++;
+        const dur = song.dur;
         this.curr = {
             song,
             startedAt,
-            endsAt: startedAt + song.duration * 1000
+            endsAt: startedAt + dur * 1000
         };
     }
     #pickNext() {
@@ -58,7 +59,7 @@ export class Station {
                 id: song.id,
                 title: song.title,
                 artist: song.artist,
-                duration: song.duration,
+                dur: song.dur,
             },
             startedAt,
             endsAt,

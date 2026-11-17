@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useStationEvents } from "../hooks/useStationEvents.js";
 import { measureClock } from "../lib/clock.js";
+import { formatTime, clamp } from "../lib/format.js";
+import SkipVote from "./SkipVote.jsx";
 
 const POLL_MS = 2000;
 
-export default function SyncedPlayer({ station: propStation, clock }) {
+export default function SyncedPlayer({ station: propStation, clock, onRequireLogin }) {
     const audRef = useRef(null);
     const stationRef = useRef(null);
     const activePlayKeyRef = useRef(null);
@@ -14,6 +16,8 @@ export default function SyncedPlayer({ station: propStation, clock }) {
     const [isEnabled, setIsEnabled] = useState(false);
     const [playbackErr, setPlaybackErr] = useState(null);
     const [syncStats, setSyncStats] = useState({ driftMs: 0, rate: 1.0 });
+    const [posSec, setPosSec] = useState(0);
+    const [imgFailed, setImgFailed] = useState(false);
     const { station: liveStation } = useStationEvents();
     const syncClock = useCallback(async () => {
         try {
@@ -72,9 +76,9 @@ export default function SyncedPlayer({ station: propStation, clock }) {
         if (!st || st.status !== 'playing' || !st.startedAt) return 0;
         const serverNow = gertSrvTime();
         const elapsedSec = (serverNow - st.startedAt) / 1000;
-        const duration = st.song?.duration || (st.endsAt ? (st.endsAt - st.startedAt) / 1000 : 0);
-        if (duration > 0) {
-            if (elapsedSec >= duration) {
+        const dur = st.song?.dur || (st.endsAt ? (st.endsAt - st.startedAt) / 1000 : 0);
+        if (dur > 0) {
+            if (elapsedSec >= dur) {
                 return 0;
             }
             return Math.max(0, elapsedSec);
@@ -95,6 +99,7 @@ export default function SyncedPlayer({ station: propStation, clock }) {
         if (activePlayKeyRef.current !== currPlayKey) {
             activePlayKeyRef.current = currPlayKey;
             setPlaybackErr(null);
+            setImgFailed(false);
             const trackId = station.song.canonicalTrackId;
             const audUrl = station.song.audUrl || `/api/audio/${trackId}`;
             const targetSec = getTgtSec(station);
@@ -146,6 +151,14 @@ export default function SyncedPlayer({ station: propStation, clock }) {
             aud.load();
         }
     }
+    function handleLeave() {
+        const aud = audRef.current;
+        if (aud) {
+            aud.pause();
+        }
+        setIsEnabled(false);
+        isEnabledRef.current = false;
+    }
     useEffect(() => {
         const aud = audRef.current;
         if (!aud) return;
@@ -171,19 +184,20 @@ export default function SyncedPlayer({ station: propStation, clock }) {
             const curr = stationRef.current;
             if (!aud || !curr || curr.status !== 'playing') return;
             const targetSec = getTgtSec(curr);
-            const duration = curr.song?.duration || aud.duration || 0;
+            const dur = curr.song?.dur || aud.duration || 0;
             const serverNow = gertSrvTime();
             if (curr.endsAt && serverNow >= curr.endsAt) {
                 fetchStation({ advance: true });
                 return;
             }
-            if ((aud.paused || aud.ended) && duration > 0 && targetSec < duration - 0.5) {
+            if ((aud.paused || aud.ended) && dur > 0 && targetSec < dur - 0.5) {
                 aud.currentTime = targetSec;
                 aud.play().catch(() => {});
                 return;
             }
             if (!Number.isFinite(aud.duration) || aud.paused) return;
             const actualSec = aud.currentTime;
+            setPosSec(actualSec);
             const driftSec = targetSec - actualSec;
             const driftMs = Math.round(driftSec * 1000);
             let newRate = 1.0;
@@ -203,48 +217,83 @@ export default function SyncedPlayer({ station: propStation, clock }) {
             setSyncStats({ driftMs, rate: newRate });
         }, 250);
         return () => clearInterval(syncInterval);
-    }, [isEnabled, getTgtSec]);
+    }, [isEnabled, getTgtSec, gertSrvTime, fetchStation]);
+
+    const dur = station?.song?.dur || 0;
+    const pos = clamp(posSec, 0, dur);
+    const remaining = Math.max(0, dur - pos);
+    const progressPct = dur > 0 ? (pos / dur) * 100 : 0;
+    const thumbUrl = !imgFailed && station?.song?.thumbnailUrl ? station.song.thumbnailUrl : null;
+    if (!isEnabled) {
+        return (
+            <div className="big-play-container">
+                <audio ref={audRef} preload="auto" playsInline />
+                <button type="button"  className="big-play-btn"  onClick={handleTuneIn} disabled={station?.status !== 'playing'} aria-label="Tune In to Live Broadcast">
+                    <div className="big-play-glow" />
+                    <div className="big-play-icon-wrap">
+                        <svg className="big-play-svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                    </div>
+                    <div className="big-play-meta">
+                        <span className="big-play-title">Tune In Live</span>
+                        <span className="big-play-subtitle">
+                            {station?.status === 'playing' ? 'Listen in sync with the world' : 'Station waiting for tracks...'}
+                        </span>
+                    </div>
+                </button>
+                {playbackErr && (
+                    <p role="alert" className="player-err-msg">{playbackErr}</p>
+                )}
+            </div>
+        );
+    }
 
     return (
-        <section className="card synced-player">
-            <audio ref={audRef} preload="auto" playsInline />
-            {station?.status === 'playing' && station.song ? (
-                <div className="synced-player__now-playing">
-                    <p className="eyebrow">NOW PLAYING · #{station.songNum || station.songNumber || 1}</p>
-                    <h2 className="song-title">{station.song.title}</h2>
-                    <p style={{ margin: '0 0 10px', color: 'var(--muted, #8b8b98)' }}>
-                        {station.song.artist || 'Unknown artist'}
-                    </p>
-                    {isEnabled && (
-                        <p style={{ fontSize: '0.8rem', opacity: 0.65, margin: '4px 0 12px' }}>
-                            Sync: ±{Math.abs(syncStats.driftMs)}ms {syncStats.rate !== 1.0 ? `(speed ${syncStats.rate}x)` : '✓ locked'}
-                        </p>
-                    )}
+        <section className="active-player-card">
+            <audio ref={audRef} preload="auto" playsInline />            
+            <div className="player-art-frame">
+                {thumbUrl ? (
+                    <img src={thumbUrl} alt={station?.song?.title || 'Album Art'} className="player-thumb-img"onError={() => setImgFailed(true)}/>
+                ) : (
+                    <div className="player-thumb-fallback">
+                        <span className="fallback-vinyl-icon">🎵</span>
+                    </div>
+                )}
+                <div className="player-live-badge">
+                    <span className="live-badge-dot" /> LIVE
                 </div>
-            ) : (
-                <div className="synced-player__waiting">
-                    <h2>Waiting for next song</h2>
-                    <p style={{ color: 'var(--muted)' }}>station searching for ready tracks...</p>
+            </div>
+            <div className="player-song-meta">
+                <span className="player-song-number">
+                    NOW PLAYING · #{station?.songNum || station?.songNumber || 1}
+                </span>
+                <h2 className="player-song-title">{station?.song?.title || 'Unknown Title'}</h2>
+                <p className="player-song-artist">{station?.song?.artist || 'Unknown Artist'}</p>
+            </div>
+            <div className="player-progress-wrap">
+                <div className="progress-bar-track">
+                    <div className="progress-bar-fill" style={{ width: `${progressPct}%` }} />
                 </div>
-            )}
-            {!isEnabled ? (
-                <button type="button" onClick={handleTuneIn} disabled={station?.status !== 'playing'}style={{ background: 'var(--accent, #ff4d6d)', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: '1rem', width: '100%', }}>
-                    Tune In Live
+                <div className="player-timestamps">
+                    <span className="time-elapsed">{formatTime(pos)}</span>
+                    <span className="time-remaining">next song in {formatTime(remaining)}</span>
+                </div>
+            </div>
+            <div className="player-controls-row">
+                <div className="sync-status-badge">
+                    <span className="sync-dot" />
+                    <span>Sync: ±{Math.abs(syncStats.driftMs)}ms {syncStats.rate !== 1.0 ? `(${syncStats.rate}x)` : '✓ locked'}</span>
+                </div>
+                <button type="button"  className="leave-btn" onClick={handleLeave} title="Pause and return to standby">
+                    Leave / Mute
                 </button>
-            ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#4ade80', fontWeight: 600, fontSize: '0.9rem' }}>
-                        Live synchronized
-                    </span>
-                    <button type="button" onClick={() => { if (audRef.current) audRef.current.pause(); setIsEnabled(false); isEnabledRef.current = false; }} style={{ background: 'transparent', border: '1px solid #444', color: '#bbb', padding: '4px 10px', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer' }}>
-                        Mute / Leave
-                    </button>
-                </div>
-            )}
+            </div>
+            <div className="player-skip-container">
+                <SkipVote onRequireLogin={onRequireLogin} />
+            </div>
             {playbackErr && (
-                <p role="alert" className="profile-setup__error" style={{ marginTop: 8 }}>
-                    {playbackErr}
-                </p>
+                <p role="alert" className="player-err-msg">{playbackErr}</p>
             )}
         </section>
     );

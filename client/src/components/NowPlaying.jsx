@@ -10,8 +10,9 @@ export default function NowPlaying({ station, nowMs }) {
         )
     }
     const { song, songNumber, startedAt } = station;
-    const pos = clamp(nowMs - startedAt, 0, song.duration);
-    const remaining = song.duration - pos;
+    const dur = song.dur ?? 0;
+    const pos = clamp(nowMs - startedAt, 0, dur);
+    const remaining = dur - pos;
 
     return (
         <section className="card" aria-label="Now playing">
@@ -19,7 +20,7 @@ export default function NowPlaying({ station, nowMs }) {
             <h2 className="song-title">{song.title}</h2>
             <p className="song-artist">{song.artist}</p>
 
-            <progress className="song-progress" value={pos} max={song.duration} aria-label="Song progress" />
+            <progress className="song-progress" value={pos} max={dur} aria-label="Song progress" />
             <div className="times">
                 <span className="time-elapsed">{formatTime(pos)}</span>
                 <span className="time-remaining">next song in {formatTime(remaining)}</span>

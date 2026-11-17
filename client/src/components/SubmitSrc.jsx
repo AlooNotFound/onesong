@@ -17,7 +17,7 @@ async function getSub(subId, token) {
     return data.sub || data.submission;
 }
 
-export default function SubmitSrc() {
+export default function SubmitSrc({ onRequireLogin }) {
     const [url, setUrl] = useState('');
     const [status, setStatus] = useState('idle');
     const [message, setMessage] = useState('');
@@ -37,7 +37,8 @@ export default function SubmitSrc() {
         const user = auth.currentUser;
         if (!user) {
             setStatus('error');
-            setMessage('You must be logged in to submit a source. Please sign in above.');
+            setMessage('you must be logged in to submit a song.');
+            onRequireLogin?.();
             return;
         }
         setStatus('loading');
@@ -90,23 +91,15 @@ export default function SubmitSrc() {
         <section className="card submit-src">
             <div className="submit-src_header">
                 <h2>Put smtg in the mix</h2>
-                <p>Submit a YouTube video or playlist to be added to the mix.</p>
+                <p>submit a YT video or playlist to be added to the mix.</p>
             </div>
             {!currentUser && (
                 <p className="profile-setup__error" style={{ marginBottom: 12 }}>
-                    Please sign in above to submit songs.
+                    pls sign in above to submit songs
                 </p>
             )}
             <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <input 
-                    type="url" 
-                    value={url} 
-                    onChange={(e) => setUrl(e.target.value)} 
-                    placeholder="Enter YouTube URL (e.g. https://www.youtube.com/watch?v=...)" 
-                    required 
-                    disabled={status === 'loading' || !currentUser} 
-                    style={{ flex: 1, minWidth: 220 }}
-                />
+                <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Enter YouTube URL (e.g. https://www.youtube.com/watch?v=...)" required disabled={status === 'loading' || !currentUser} style={{ flex: 1, minWidth: 220 }}/>
                 <button type="submit" disabled={status === 'loading' || !currentUser}>
                     {status === 'loading' ? 'Submitting...' : 'Submit'}
                 </button>
@@ -124,7 +117,7 @@ export default function SubmitSrc() {
             )}
             {sub?.truncated && (
                 <p className="submit-source__message submit-source__message--warning" role="status">
-                    Note: The submission was truncated due to a large number of tracks.
+                    note: submission was truncated due to a large number of tracks
                 </p>
             )}
         </section>

@@ -82,7 +82,7 @@ export async function replenishCache() {
         const srcUrl = srcData?.srcUrl || `https://www.youtube.com/watch?v=${repId}`;
         const title = data.title || srcData?.title || 'Unknown Title';
         const artist = data.artist || srcData?.artist || 'Unknown Artist';
-        const duration = srcData?.duration ?? data.duration ?? null;
+        const dur = srcData?.dur ?? data.dur ?? null;
         const cacheRef = db.collection('audio_cache').doc(canonicalId);
         await cacheRef.set({
             canonicalTrackId: canonicalId,
@@ -91,7 +91,7 @@ export async function replenishCache() {
             providerTrackId: repId,
             title,
             artist,
-            duration,
+            dur,
             status: 'downloading',
             fName: null,
             fSize: null,

@@ -6,7 +6,7 @@ export function clamp(value, min, max) {
 
 export function targertPosSecs(station, nowMs) {
     const startedAt = station?.startedAt ?? 0;
-    const durSec = station?.song?.duration ?? 0;
+    const durSec = station?.song?.dur ?? 0;
 
     if (!Number.isFinite(startedAt) || !Number.isFinite(durSec) || !Number.isFinite(nowMs)) {
         return 0;

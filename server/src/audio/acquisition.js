@@ -19,7 +19,7 @@ export async function acquireTrackAudio(canonicalTrackId) {
     let repId = cData.repSourceId || cData.repSrcId || cData.providerTrackId;
     let title = cData.title;
     let artist = cData.artist;
-    let duration = cData.duration ?? null;
+    let dur = cData.dur ?? null;
     let srcUrl = cData.srcUrl ?? null;
 
     if (!repId) {
@@ -29,7 +29,7 @@ export async function acquireTrackAudio(canonicalTrackId) {
             repId = trackDoc.providerTrackId;
             title = title || trackDoc.title;
             artist = artist || trackDoc.artist;
-            duration = duration ?? trackDoc.duration;
+            dur = dur ?? trackDoc.dur;
             srcUrl = srcUrl || trackDoc.srcUrl;
         } else {
             const directSnap = await db.collection('tracks').doc(canonicalTrackId).get();
@@ -38,7 +38,7 @@ export async function acquireTrackAudio(canonicalTrackId) {
                 repId = trackDoc.repSourceId || trackDoc.providerTrackId;
                 title = title || trackDoc.title;
                 artist = artist || trackDoc.artist;
-                duration = duration ?? trackDoc.duration;
+                dur = dur ?? trackDoc.dur;
                 srcUrl = srcUrl || trackDoc.srcUrl;
             }
         }
@@ -47,7 +47,7 @@ export async function acquireTrackAudio(canonicalTrackId) {
                 repSourceId: repId,
                 title: title || 'Unknown Title',
                 artist: artist || 'Unknown Artist',
-                duration,
+                dur,
                 srcUrl,
             }, { merge: true });
         }
@@ -65,10 +65,10 @@ export async function acquireTrackAudio(canonicalTrackId) {
     } catch {}
     title = title || srcData?.title || 'Unknown Title';
     artist = artist || srcData?.artist || 'Unknown Artist';
-    duration = duration ?? srcData?.duration ?? null;
+    dur = dur ?? srcData?.dur ?? null;
     srcUrl = srcUrl || srcData?.srcUrl || `https://www.youtube.com/watch?v=${repId}`;
     const cacheRef = db.collection('audio_cache').doc(canonicalTrackId);
-    await cacheRef.set({ canonicalTrackId, srcTrackId: repId, provider: 'youtube', providerTrackId: repId, title, artist, duration, status: 'downloading', fName: null, fSize: null, fExtension: null, mimeType: null, error: null, acquiredVia: 'admin_acquisition', updatedAt: FieldVal.serverTimestamp(), }, { merge: true });
+    await cacheRef.set({ canonicalTrackId, srcTrackId: repId, provider: 'youtube', providerTrackId: repId, title, artist, dur, status: 'downloading', fName: null, fSize: null, fExtension: null, mimeType: null, error: null, acquiredVia: 'admin_acquisition', updatedAt: FieldVal.serverTimestamp(), }, { merge: true });
     try {
         const result = await downloadYtAud({ vidId: repId, canonicalTrackId, srcUrl, });
 
@@ -99,7 +99,7 @@ export async function stageUploadedAudio({ canonicalTrackId, buffer, fName = 'au
     await fs.writeFile(destPath, buffer);
     let title = 'Uploaded Track';
     let artist = 'Admin';
-    let duration = null;
+    let dur = null;
 
     try {
         const cSnap = await db.collection('canonical_tracks').doc(canonicalTrackId).get();
@@ -107,7 +107,7 @@ export async function stageUploadedAudio({ canonicalTrackId, buffer, fName = 'au
             const data = cSnap.data();
             title = data.title || title;
             artist = data.artist || artist;
-            duration = data.duration || null;
+            dur = data.dur || null;
         }
     } catch {}
     try {
@@ -116,7 +116,7 @@ export async function stageUploadedAudio({ canonicalTrackId, buffer, fName = 'au
             canonicalTrackId,
             title,
             artist,
-            duration,
+            dur,
             status: 'ready',
             fName: destfName,
             fSize: buffer.length,
@@ -165,7 +165,7 @@ export async function listAcquisitionTracks({ statusFilter = null, limit = 100 }
             canonicalTrackId: doc.id, 
             title: cData.title || cacheData?.title || fallback?.title || 'Unknown', 
             artist: cData.artist || cacheData?.artist || fallback?.artist || 'Unknown', 
-            duration: cData.duration ?? cacheData?.duration ?? fallback?.duration ?? null, 
+            dur: cData.dur ?? cacheData?.dur ?? fallback?.dur ?? null, 
             repSourceId: cData.repSourceId || cData.repSrcId || fallback?.repSourceId || fallback?.providerTrackId || null, 
             status, 
             fName: cacheData?.fName || null, 

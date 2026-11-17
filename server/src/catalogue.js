@@ -20,8 +20,9 @@ export function validate(entries, src = 'seed') {
         if (typeof s.artist !== 'string' || s.artist.trim() === '') {
             throw new Error(`Invalid ${where}: missing or empty 'artist'`);
         }
-        if (typeof s.duration !== 'number' || s.duration <= 0 || !Number.isFinite(s.duration)) {
-            throw new Error(`Invalid ${where}: 'duration' must be a positive number`);
+        const dur = s.dur;
+        if (typeof dur !== 'number' || dur <= 0 || !Number.isFinite(dur)) {
+            throw new Error(`Invalid ${where}: 'dur' must be a positive number`);
         }
         if (seen.has(s.id)) {
             throw new Error(`Invalid ${where}: duplicate 'id'`);
@@ -50,7 +51,7 @@ export function loadCatalogue() {
             id: 'dQw4w9WgXcQ',
             title: 'Never Gonna Give You Up',
             artist: 'Rick Astley',
-            duration: 213,
+            dur: 213,
         },
     ];
 }
