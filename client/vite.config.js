@@ -8,7 +8,10 @@ export default defineConfig({
     port: 5173,
     // In dev, the React app talks to the Express server through this proxy.
     proxy: {
-      '/api': 'http://localhost:3000',
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
 });

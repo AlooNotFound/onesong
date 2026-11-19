@@ -56,6 +56,11 @@ router.get('/:canonicalTrackId', async (req, res) => {
 
             const stream = fs.createReadStream(filePath, { start, end });
             stream.pipe(res);
+            req.on('close', () => stream.destroy());
+            stream.on('error', () => {
+                if (!res.headersSent) res.status(500).end();
+                stream.destroy();
+            });
         } else {
             res.writeHead(200, {
                 'Content-Length': totalSize,
@@ -63,7 +68,13 @@ router.get('/:canonicalTrackId', async (req, res) => {
                 'Accept-Ranges': 'bytes',
                 'Cache-Control': 'public, max-age=86400',
             });
-            fs.createReadStream(filePath).pipe(res);
+            const stream = fs.createReadStream(filePath);
+            stream.pipe(res);
+            req.on('close', () => stream.destroy());
+            stream.on('error', () => {
+                if (!res.headersSent) res.status(500).end();
+                stream.destroy();
+            });
         }
     } catch (error) {
         console.error('Error in audio route:', error);
