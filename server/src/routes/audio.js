@@ -23,7 +23,16 @@ router.get('/:canonicalTrackId', async (req, res) => {
         if (!data.fName) {
             return res.status(500).json({ error: 'Audio metadata incomplete' });
         }
-        const filePath = path.join(CACHE_DIR, path.basename(data.fName));
+        let filePath = path.join(CACHE_DIR, path.basename(data.fName));
+        if (!fs.existsSync(filePath)) {
+            try {
+                const { acquireTrackAudio } = await import('../audio/acquisition.js');
+                const result = await acquireTrackAudio(canonicalTrackId);
+                if (result?.fName) {
+                    filePath = path.join(CACHE_DIR, path.basename(result.fName));
+                }
+            } catch {}
+        }
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: 'Audio file missing from storage' });
         }

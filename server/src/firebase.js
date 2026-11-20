@@ -5,12 +5,27 @@ import fs from 'fs';
 import path from 'path';
 
 let credential;
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+        const raw = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+        const parsed = JSON.parse(raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8'));
+        credential = cert(parsed);
+    } catch {}
+} else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
     credential = applicationDefault();
-} else if (fs.existsSync(path.resolve('serviceAccountKey.json'))) {
-    credential = cert(path.resolve('serviceAccountKey.json'));
-} else if (fs.existsSync(path.resolve('server/serviceAccountKey.json'))) {
-    credential = cert(path.resolve('server/serviceAccountKey.json'));
+} else {
+    const candidates = [
+        path.resolve('serviceAccountKey.json'),
+        path.resolve('server/serviceAccountKey.json'),
+        path.resolve(import.meta.dirname, '../serviceAccountKey.json'),
+        path.resolve(import.meta.dirname, '../../serviceAccountKey.json'),
+    ];
+    for (const file of candidates) {
+        if (fs.existsSync(file)) {
+            credential = cert(file);
+            break;
+        }
+    }
 }
 
 const app = getApps().length === 0 ? initializeApp({

@@ -8,10 +8,10 @@ import {
 } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBjf3xRygocKZDcQHLfP2VUAQeQHYzUs8w',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'one-song-internet.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'one-song-internet',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:576822389770:web:ccb31948d923b9cae383f3',
 };
 
 const app = initializeApp(firebaseConfig);
