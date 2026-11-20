@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { auth } from '../lib/firebase.js';
-import { Send, X, MessageCircle } from "lucide-react";
+import { Send, X, MessageSquare } from "lucide-react";
 
 function getAvatarColor(name) {
     let hash = 0;
@@ -134,7 +134,7 @@ export default function LiveChat({ user, profile, onRequireLogin }) {
                         </button>
                     </div>
 
-                    <div className="live-chat-msgs" ref={scrollContainerRef}>
+                    <div className="live-chat-messages" ref={scrollContainerRef}>
                         {msgs.length === 0 ? (
                             <div className="live-chat-empty">
                                 <span>No msgs yet.</span>
