@@ -21,9 +21,7 @@ export function useServerClock() {
                 if (cancelled) return;
                 offsetRef.current = offset;
                 setReady(true);
-            } catch (err) {
-                console.error("Failed to sync clock:", err);
-            }
+            } catch {}
         }
         sync();
         return () => {

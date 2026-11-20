@@ -3,7 +3,7 @@ import path from "path";
 import express from "express";
 import { Station } from "./station.js";
 import { loadCatalogue } from "./catalogue.js";
-import { createListenerRegistry, isValidListenerId } from "./listeners.js";
+import { createListenerRegistry, listenerRegistry, isValidListenerId } from "./listeners.js";
 import { createSkipSrv } from "./skipVotes.js";
 import subRouter from "./routes/submissions.js";
 import audioRouter from "./routes/audio.js";
@@ -14,6 +14,7 @@ import historyRouter from './routes/history.js';
 import eventsRouter from './routes/events.js';
 import usersRouter from './routes/users.js';
 import chatRouter from './routes/chat.js';
+import lyricsRouter from './routes/lyrics.js';
 import adminAudioRouter from './routes/adminAudio.js';
 import { getStation, getStationSnap } from './station/service.js';
 
@@ -35,8 +36,9 @@ app.use('/api/history', historyRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/lyrics', lyricsRouter);
 const station = new Station({ catalog: loadCatalogue() });
-const listenerReg = createListenerRegistry();
+const listenerReg = listenerRegistry;
 const skipSrv = createSkipSrv({
   getStation: () => station.snapshot(),
   getActiveListenerCount: () => listenerReg.count(),

@@ -40,12 +40,7 @@ export function loadYTApi() {
         if (typeof prevCall === 'function') {
           prevCall();
         }
-      } catch (error) {
-        console.error(
-          'existing yt api callback failed',
-          error,
-        );
-      }
+      } catch {}
 
       finish();
     };

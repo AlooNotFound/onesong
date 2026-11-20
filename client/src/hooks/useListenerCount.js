@@ -17,13 +17,6 @@ function createListenerId() {
     return `listener_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
 }
 
-async function readJson(resp) {
-    if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
-    }
-    return resp.json();
-}
-
 function getListenerId() {
     try {
         const existing = window.sessionStorage.getItem(storage_key);

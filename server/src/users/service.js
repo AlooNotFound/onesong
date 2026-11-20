@@ -23,6 +23,8 @@ function serializeProfile(data) {
         displayName: data.displayName,
         bio: data.bio ?? '',
         photoURL: data.photoURL ?? null,
+        role: data.role ?? 'user',
+        isAdmin: Boolean(data.isAdmin || data.role === 'admin'),
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
     };

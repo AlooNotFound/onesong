@@ -10,7 +10,7 @@ export function isValidListenerId(id) {
 }
 
 export function createListenerReg({
-    now = Date.now(),
+    now = Date.now,
     ttl = default_ttl,
 } = {}) {
     if (!Number.isFinite(ttl) || ttl <= 0) {
@@ -55,3 +55,5 @@ export const createListenerRegistry = ({
     now = Date.now,
     ttlMs = default_ttl,
 } = {}) => createListenerReg({ now, ttl: ttlMs });
+
+export const listenerRegistry = createListenerRegistry();

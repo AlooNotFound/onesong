@@ -76,8 +76,7 @@ export function useSyncedPlayer(station, nowMs) {
         let actualSec;
         try {
             actualSec = player.getCurrentTime();
-        } catch (error) {
-            console.error(error);
+        } catch {
             return;
         }
 
@@ -148,7 +147,6 @@ export function useSyncedPlayer(station, nowMs) {
                     onError(event) {
                         if (cancelled) return;
                         const msg = errorMessage(event.data);
-                        console.error(msg);
                         setStatus(msg);
                     }
                 }
@@ -166,9 +164,7 @@ export function useSyncedPlayer(station, nowMs) {
 
             try {
                 player?.destroy();
-            } catch (error) {
-                console.error('Error destroying player:', error);
-            }
+            } catch {}
             loadedKeyRef.current = null;
             host.replaceChildren();
         }

@@ -31,9 +31,7 @@ export function useStationEvents() {
                 if (cancelled) return;
                 setStation(stationData);
                 setHistory(historyData);
-            } catch (err) {
-                console.error('Error loading station snapshot:', err);
-            }
+            } catch {}
         }
         function connect() {
             if (cancelled) return;
@@ -50,9 +48,7 @@ export function useStationEvents() {
             src.addEventListener('station', (e) => {
                 try {
                     setStation(JSON.parse(e.data));
-                } catch (err) {
-                    console.error('Error parsing station event data:', err);
-                }
+                } catch {}
             });
             src.addEventListener('history', (e) => {
                 try {
@@ -64,16 +60,12 @@ export function useStationEvents() {
                             dislikes: data.dislikes,
                         },
                     }));
-                } catch (err) {
-                    console.error('Error parsing history event data:', err);
-                }
+                } catch {}
             });
             src.addEventListener('skip-vote', (event) => {
                 try {
                     setSkipVotes(JSON.parse(event.data));
-                } catch (err) {
-                    console.error('Error parsing skip-vote event data:', err);
-                }
+                } catch {}
             });
             src.onerror = () => {
                 if (cancelled) return;

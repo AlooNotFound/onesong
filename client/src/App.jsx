@@ -15,6 +15,7 @@ export default function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const isAdmin = Boolean(profile?.isAdmin || profile?.role === 'admin');
 
   return (
     <div className="app-shell">
@@ -56,16 +57,18 @@ export default function App() {
         <SyncedPlayer station={station} clock={clock} onRequireLogin={() => setShowProfileModal(true)}/>
         {error && (
           <p className="reconnect-status" role="status">
-            reconnecting to bajate rahoooo…
+            Reconnecting to broadcast…
           </p>
         )}
       </main>
 
       <footer className="footer">
         <p>&copy; 2026 OneSong. All rights reserved.</p>
-        <button type="button" className="admin-link-btn" onClick={() => setShowAdminModal(true)}>
-          Audio Storage & Admin
-        </button>
+        {isAdmin && (
+          <button type="button" className="admin-link-btn" onClick={() => setShowAdminModal(true)}>
+            Audio Storage & Admin
+          </button>
+        )}
       </footer>
 
       {showProfileModal && (
@@ -97,7 +100,7 @@ export default function App() {
         </div>
       )}
 
-      {showAdminModal && (
+      {showAdminModal && isAdmin && (
         <div className="modal-overlay" onClick={() => setShowAdminModal(false)}>
           <div className="modal-dialog modal-dialog--wide" onClick={(e) => e.stopPropagation()}>
             <button type="button" className="modal-close-btn" onClick={() => setShowAdminModal(false)} aria-label="Close">

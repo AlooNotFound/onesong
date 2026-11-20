@@ -11,7 +11,7 @@ function formatBytes(bytes) {
 
 export default function adminAudHandling() {
   const [isOpen, setIsOpen] = useState(false);
-  const [adminKey, setAdminKey] = useState(() => localStorage.getItem('onesong_admin_key') || 'onesong-admin');
+  const [adminKey, setAdminKey] = useState(() => localStorage.getItem('onesong_admin_key') || '');
   const [stats, setStats] = useState(null);
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -45,9 +45,7 @@ export default function adminAudHandling() {
       if (data.ok) {
         setStats(data.stats);
       }
-    } catch (err) {
-      console.warn('Could not fetch audio stats:', err);
-    }
+    } catch {}
   }, [getHeaders]);
 
   const fetchTracks = useCallback(async () => {
@@ -58,9 +56,7 @@ export default function adminAudHandling() {
       if (data.ok) {
         setTracks(data.tracks);
       }
-    } catch (err) {
-      console.warn('Could not fetch acquisition tracks:', err);
-    }
+    } catch {}
   }, [getHeaders]);
 
   const refreshAll = useCallback(async () => {

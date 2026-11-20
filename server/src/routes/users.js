@@ -6,8 +6,22 @@ const router = Router();
 
 router.get('/me', reqAuth, async (req, res) => {
     try {
+        const adminUids = (process.env.ADMIN_UIDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+        const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+        const isExplicitAdmin =
+            (req.user.email && adminEmails.includes(req.user.email.toLowerCase())) ||
+            adminUids.includes(req.user.uid);
+
         const profile = await getProfile(req.user.uid);
-        res.json({ profile: profile || null });
+        const isAdmin = Boolean(isExplicitAdmin || profile?.isAdmin || profile?.role === 'admin');
+
+        if (profile) {
+            res.json({ profile: { ...profile, isAdmin } });
+        } else if (isAdmin) {
+            res.json({ profile: { uid: req.user.uid, isAdmin: true } });
+        } else {
+            res.json({ profile: null });
+        }
     } catch (err) {
         res.status(err.status ?? 500).json({
             error: err.message ?? 'Failed to retrieve profile',
@@ -17,8 +31,22 @@ router.get('/me', reqAuth, async (req, res) => {
 
 router.get('/', reqAuth, async (req, res) => {
     try {
+        const adminUids = (process.env.ADMIN_UIDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+        const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+        const isExplicitAdmin =
+            (req.user.email && adminEmails.includes(req.user.email.toLowerCase())) ||
+            adminUids.includes(req.user.uid);
+
         const profile = await getProfile(req.user.uid);
-        res.json({ profile: profile || null });
+        const isAdmin = Boolean(isExplicitAdmin || profile?.isAdmin || profile?.role === 'admin');
+
+        if (profile) {
+            res.json({ profile: { ...profile, isAdmin } });
+        } else if (isAdmin) {
+            res.json({ profile: { uid: req.user.uid, isAdmin: true } });
+        } else {
+            res.json({ profile: null });
+        }
     } catch (err) {
         res.status(err.status ?? 500).json({
             error: err.message ?? 'Failed to retrieve profile',
