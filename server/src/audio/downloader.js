@@ -50,14 +50,7 @@ function getCookiesPath() {
 
 function getYtDlpExtractorArgs() {
     const args = ['--js-runtimes', 'node:node'];
-    args.push('--extractor-args', 'youtube:player_client=visionos');
-    const cookies = getCookiesPath();
-    if (cookies) {
-        console.log(`[AudioDownloader] Using cookies: ${cookies}`);
-        args.push('--cookies', cookies);
-    } else {
-        console.warn('[AudioDownloader] No cookies file found');
-    }
+    args.push('--extractor-args', 'youtube:player_client=visionos,mweb');
     if (process.env.YT_DLP_PROXY) {
         const proxies = process.env.YT_DLP_PROXY.split(',').map(p => p.trim()).filter(Boolean);
         const proxy = proxies[Math.floor(Math.random() * proxies.length)];
