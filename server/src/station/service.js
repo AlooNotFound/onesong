@@ -168,6 +168,8 @@ export async function advanceStation({
                         updatedAt: FieldVal.serverTimestamp(),
                     };
                     tx.set(stationRef, waiting, { merge: true });
+                    memStationSnap = waiting;
+                    memStationTime = now;
                     return serializeStation(waiting, now);
                 }
                 const track = candidate.data();
@@ -194,6 +196,8 @@ export async function advanceStation({
                     updatedAt: FieldVal.serverTimestamp(),
                 };
                 tx.set(stationRef, next, { merge: true });
+                memStationSnap = next;
+                memStationTime = now;
                 const historyRef = db
                     .collection('play_history')
                     .doc(String(nextSongNum));
@@ -234,12 +238,22 @@ export async function advanceStation({
     return run();
 }
 
+let memStationSnap = null;
+let memStationTime = 0;
+
 export async function getStation({ advanceIfEnding = false } = {}) {
     const now = Date.now();
     try {
-        const snap = await stationRef.get();
-        if (snap.exists) {
-            const data = snap.data();
+        let data = memStationSnap;
+        if (!data || (now - memStationTime >= 2000)) {
+            const snap = await stationRef.get();
+            if (snap.exists) {
+                data = snap.data();
+                memStationSnap = data;
+                memStationTime = now;
+            }
+        }
+        if (data) {
             const endsAt = tsMillis(data.endsAt);
             const remaining = endsAt ? (endsAt - now) : 0;
             const threshold = advanceIfEnding ? 1000 : 0;
@@ -256,8 +270,16 @@ export async function getStation({ advanceIfEnding = false } = {}) {
 }
 
 export async function getStationSnap() {
+    const now = Date.now();
+    if (memStationSnap && (now - memStationTime < 2000)) {
+        return serializeStation(memStationSnap, now);
+    }
     const snapshot = await stationRef.get();
-    return serializeStation(snapshot.exists ? snapshot.data() : null);
+    if (snapshot.exists) {
+        memStationSnap = snapshot.data();
+        memStationTime = now;
+    }
+    return serializeStation(snapshot.exists ? snapshot.data() : null, now);
 }
 
 export const advStation = advanceStation;

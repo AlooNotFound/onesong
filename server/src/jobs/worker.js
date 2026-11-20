@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { db, FieldVal, Timestamp } from '../firebase.js'
 import { processIngestionJob, processSubmission } from '../submissions/service.js';
 
-const POLL_MS = 2000;
+const POLL_MS = 15000;
 const LEASE_MS = 120000;
 const HEARTBEAT_MS = 30000;
 const MAX_ATTEMPTS = 5;

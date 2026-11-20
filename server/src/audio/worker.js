@@ -2,7 +2,7 @@ import { replenishCache, getCacheStatus } from './cacheSrv.js';
 import { processStagedAssets } from './staging.js';
 import { cleanPlayed, auditCacheStorage } from './cleanup.js';
 
-const POLL_MS = 5000;
+const POLL_MS = 30000;
 let stopping = false;
 let running = false;
 let timer = null;

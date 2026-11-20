@@ -18,7 +18,7 @@ function getSig(station) {
 }
 
 async function tick() {
-    if (running || stopping ) return;
+    if (running || stopping ) return null;
     running = true;
     try {
         const station = await advStation();
@@ -32,16 +32,41 @@ async function tick() {
         if (station.status === 'playing') {
             console.log(`Now playing: ${station.song.title} by ${station.song.artist}`);
         }
+        return station;
     } catch (err) {
-        console.error('Error advancing station:', err);
+        console.error('Error advancing station:', err?.message || err);
+        return null;
     } finally {
         running = false;
     }
 }
 
+let timer = null;
+
+function scheduleNext(station) {
+    if (stopping) return;
+    let delay = 10000;
+    if (station?.status === 'playing' && station?.endsAt) {
+        const remaining = station.endsAt - Date.now();
+        if (remaining > 5000) {
+            delay = Math.min(remaining - 2000, 15000);
+        } else {
+            delay = Math.max(1000, remaining);
+        }
+    } else {
+        delay = 10000;
+    }
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+        const nextStation = await tick();
+        scheduleNext(nextStation);
+    }, delay);
+}
+
 async function shutdown(sig) {
     console.log(`Received ${sig}. Shutting down...`);
     stopping = true;
+    clearTimeout(timer);
     while (running) {
         console.log('Waiting for current operation to finish...');
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -53,6 +78,6 @@ async function shutdown(sig) {
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-await tick();
-const timer = setInterval(tick, POLL_MS);
-process.on('beforeExit', () => clearInterval(timer));
+const initial = await tick();
+scheduleNext(initial);
+process.on('beforeExit', () => clearTimeout(timer));
