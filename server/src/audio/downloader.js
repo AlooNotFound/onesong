@@ -29,23 +29,40 @@ function getCookiesPath() {
         return process.env.YT_COOKIES_PATH;
     }
     const home = os.homedir();
-    const candidates = [
-        path.resolve('cookies.txt'),
-        path.resolve('server/cookies.txt'),
-        path.join(home, 'cookies.txt'),
-        path.join(home, '.config/yt-dlp/cookies.txt'),
+    const filenames = ['cookies.txt', 'cookie.txt', 'youtube_cookies.txt', 'youtube-cookies.txt'];
+    const searchDirs = [
+        process.cwd(),
+        path.resolve('server'),
+        path.resolve('..'),
+        path.join(home, 'onesong'),
+        path.join(home, 'onesong/server'),
+        home,
+        path.join(home, '.config/yt-dlp'),
     ];
-    for (const p of candidates) {
-        if (existsSync(p)) return p;
+    for (const dir of searchDirs) {
+        for (const fname of filenames) {
+            const p = path.join(dir, fname);
+            if (existsSync(p)) return p;
+        }
     }
     return null;
 }
 
 function getYtDlpExtractorArgs() {
-    const args = ['--extractor-args', 'youtube:player_client=android,ios'];
+    const args = ['--js-runtimes', 'node:node'];
+    args.push('--extractor-args', 'youtube:player_client=visionos');
     const cookies = getCookiesPath();
     if (cookies) {
+        console.log(`[AudioDownloader] Using cookies: ${cookies}`);
         args.push('--cookies', cookies);
+    } else {
+        console.warn('[AudioDownloader] No cookies file found');
+    }
+    if (process.env.YT_DLP_PROXY) {
+        const proxies = process.env.YT_DLP_PROXY.split(',').map(p => p.trim()).filter(Boolean);
+        const proxy = proxies[Math.floor(Math.random() * proxies.length)];
+        console.log(`[AudioDownloader] Using proxy: ${proxy}`);
+        args.push('--proxy', proxy);
     }
     return args;
 }
@@ -88,35 +105,44 @@ export async function downloadYtAud({ vidId, videoId, canonicalTrackId, srcUrl }
     const tempPattern = path.join(CACHE_DIR, `${tempPrefix}.%(ext)s`);
     const tempMp3Path = path.join(CACHE_DIR, `${tempPrefix}.mp3`);
 
-    const args = [
-        '--no-warnings',
-        '--no-playlist',
-        ...getYtDlpExtractorArgs(),
-        '-x',
-        '--audio-format', 'mp3',
-        '--audio-quality', '0',
-        '--max-filesize', `${MAX_FILE_SIZE}`,
-        '-o', tempPattern,
-        url,
-    ];
-    try {
-        await new Promise((resolve, reject) => {
+    async function runDownload() {
+        const args = [
+            '--no-warnings',
+            '--no-playlist',
+            ...getYtDlpExtractorArgs(),
+            '-x',
+            '--audio-format', 'mp3',
+            '--audio-quality', '0',
+            '--max-filesize', `${MAX_FILE_SIZE}`,
+            '-o', tempPattern,
+            url,
+        ];
+        return new Promise((resolve, reject) => {
             const proc = spawn(YT_DLP_BIN, args, { env: SPAWN_ENV });
-            let stderrData = '';
+            let outputData = '';
+            proc.stdout.on('data', (d) => {
+                outputData += d.toString();
+            });
             proc.stderr.on('data', (d) => {
-                stderrData += d.toString();
+                outputData += d.toString();
             });
             proc.on('close', (code) => {
                 if (code === 0) {
                     resolve();
                 } else {
-                    reject(new Error(`yt-dlp failed ${code}: ${stderrData.slice(-500)}`));
+                    console.error(`[AudioDownloader] yt-dlp failed (code ${code}):\n${outputData}`);
+                    reject(new Error(`yt-dlp failed ${code}: ${outputData.slice(-500)}`));
                 }
             });
             proc.on('error', (err) => {
+                console.error(`[AudioDownloader] Failed to execute yt-dlp:`, err);
                 reject(new Error(`Failed to execute yt-dlp: ${err.message}`));
             });
         });
+    }
+
+    try {
+        await runDownload();
         const stat = await fs.stat(tempMp3Path);
         if (!stat.isFile() || stat.size === 0) {
             throw new Error('Downloaded audio file is empty or missing');
@@ -152,7 +178,6 @@ export async function extractVIdMeta(vidId) {
         '--no-warnings',
         '--skip-download',
         ...getYtDlpExtractorArgs(),
-        '--js-runtimes', 'node:node',
         url,
     ];
     return new Promise((resolve, reject) => {
@@ -202,7 +227,6 @@ export async function extractPLMeta(playlistId, maxEntries = 500) {
         '--no-warnings',
         '--skip-download',
         ...getYtDlpExtractorArgs(),
-        '--js-runtimes', 'node:node',
         url,
     ];
 

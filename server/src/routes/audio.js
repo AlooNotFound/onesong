@@ -26,7 +26,9 @@ router.get('/:canonicalTrackId', async (req, res) => {
                     filePath = path.join(CACHE_DIR, path.basename(result.fName));
                     data = { ...data, fName: result.fName, mimeType: result.mimeType, status: 'ready' };
                 }
-            } catch {}
+            } catch (err) {
+                console.error('[AudioRoute] acquireTrackAudio error:', err?.message || err);
+            }
         }
         if (!filePath || !fs.existsSync(filePath)) {
             return res.status(404).json({ error: `Audio not ready for streaming (status: ${data.status})` });
