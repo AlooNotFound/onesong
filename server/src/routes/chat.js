@@ -8,7 +8,7 @@ const router = Router();
 router.get('/', async (_req, res) => {
     try {
         const messages = await getRecentMessages(50);
-        res.json({ messages });
+        res.json({ messages, msgs: messages });
     } catch (err) {
         res.status(500).json({ error: err.message || 'failed to fetch messages' });
     }

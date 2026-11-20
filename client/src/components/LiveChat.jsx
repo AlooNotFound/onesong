@@ -48,8 +48,9 @@ export default function LiveChat({ user, profile, onRequireLogin }) {
                 const res = await fetch('/api/chat');
                 if (!res.ok) return;
                 const data = await res.json();
-                if (isMounted && Array.isArray(data.msgs)) {
-                    setMsgs(data.msgs);
+                const list = data.messages || data.msgs;
+                if (isMounted && Array.isArray(list)) {
+                    setMsgs(list);
                 }
             } catch {}
         }
@@ -69,8 +70,15 @@ export default function LiveChat({ user, profile, onRequireLogin }) {
             } catch {}
         });
 
+        const pollTimer = setInterval(() => {
+            if (isOpenRef.current) {
+                fetchHistory();
+            }
+        }, 3000);
+
         return () => {
             isMounted = false;
+            clearInterval(pollTimer);
             src.close();
         };
     }, []);
@@ -102,6 +110,14 @@ export default function LiveChat({ user, profile, onRequireLogin }) {
             });
 
             if (res.ok) {
+                const data = await res.json().catch(() => null);
+                const newMsg = data?.message || data?.msg;
+                if (newMsg) {
+                    setMsgs((prev) => {
+                        if (prev.some((m) => m.id === newMsg.id)) return prev;
+                        return [...prev, newMsg];
+                    });
+                }
                 setText('');
             }
         } catch {} finally {

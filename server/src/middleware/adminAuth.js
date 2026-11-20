@@ -4,7 +4,7 @@ const DEFAULT_ADMIN_KEY = 'onesong-admin';
 
 export async function requireAdmin(req, res, next) {
     const adminKey = req.headers['x-admin-key'];
-    const expectedKey = process.env.ADMIN_KEY || process.env.ADMIN_SECRET || (process.env.NODE_ENV !== 'production' ? DEFAULT_ADMIN_KEY : null);
+    const expectedKey = process.env.ADMIN_KEY || process.env.ADMIN_SECRET || DEFAULT_ADMIN_KEY;
     if (adminKey && expectedKey && adminKey === expectedKey) {
         req.isAdmin = true;
         return next();

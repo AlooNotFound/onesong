@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useServerClock } from './hooks/useServerClock.js';
 import { useStation } from './hooks/useStation.js';
 import { useMyProfile } from './hooks/useMyProfile.js';
@@ -14,8 +14,21 @@ export default function App() {
   const { user, profile, loading: profileLoading, setProfile } = useMyProfile();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [showAdminModal, setShowAdminModal] = useState(false);
-  const isAdmin = Boolean(profile?.isAdmin || profile?.role === 'admin');
+  const [showAdminModal, setShowAdminModal] = useState(() => typeof window !== 'undefined' && window.location.hash === '#admin');
+  const [isAdminRoute, setIsAdminRoute] = useState(() => typeof window !== 'undefined' && (window.location.hash === '#admin' || new URLSearchParams(window.location.search).has('admin')));
+  const isAdmin = Boolean(profile?.isAdmin || profile?.role === 'admin' || isAdminRoute);
+
+  useEffect(() => {
+    const handleHash = () => {
+      const match = window.location.hash === '#admin' || new URLSearchParams(window.location.search).has('admin');
+      if (match) {
+        setIsAdminRoute(true);
+        setShowAdminModal(true);
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   return (
     <div className="app-shell">

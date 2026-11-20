@@ -10,8 +10,8 @@ function formatBytes(bytes) {
 }
 
 export default function adminAudHandling() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [adminKey, setAdminKey] = useState(() => localStorage.getItem('onesong_admin_key') || '');
+  const [isOpen, setIsOpen] = useState(true);
+  const [adminKey, setAdminKey] = useState(() => localStorage.getItem('onesong_admin_key') || 'onesong-admin');
   const [stats, setStats] = useState(null);
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(false);

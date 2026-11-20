@@ -23,6 +23,9 @@ async function initChatHistory() {
 initChatHistory();
 
 export async function getRecentMessages(limit = 50) {
+    if (chatMessages.length === 0) {
+        await initChatHistory();
+    }
     return chatMessages.slice(-limit);
 }
 
@@ -43,7 +46,7 @@ export async function addMessage({ text, uid, displayName, username, isGuest }) 
     }
 
     try {
-        db.collection('chat_messages').doc(msg.id).set(msg).catch(() => {});
+        await db.collection('chat_messages').doc(msg.id).set(msg);
     } catch {}
 
     publishEvent('chat', msg);
