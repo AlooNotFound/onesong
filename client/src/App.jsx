@@ -6,6 +6,7 @@ import SyncedPlayer from './components/SyncedAudioPlayer.jsx';
 import ProfileSetup from './components/ProfileSetup.jsx';
 import SubmitSrc from './components/SubmitSrc.jsx';
 import AdminAudHandling from './components/AdminAudHandling.jsx';
+import LiveChat from './components/LiveChat.jsx';
 
 export default function App() {
   const clock = useServerClock();
@@ -106,6 +107,7 @@ export default function App() {
           </div>
         </div>
       )}
+      <LiveChat user={user} profile={profile} onRequireLogin={() => setShowProfileModal(true)} />
     </div>
   );
 }

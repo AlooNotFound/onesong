@@ -13,6 +13,7 @@ import skipRouter from './routes/skip.js';
 import historyRouter from './routes/history.js';
 import eventsRouter from './routes/events.js';
 import usersRouter from './routes/users.js';
+import chatRouter from './routes/chat.js';
 import adminAudioRouter from './routes/adminAudio.js';
 import { getStation, getStationSnap } from './station/service.js';
 
@@ -33,6 +34,7 @@ app.use('/api/skip', skipRouter);
 app.use('/api/history', historyRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/chat', chatRouter);
 const station = new Station({ catalog: loadCatalogue() });
 const listenerReg = createListenerRegistry();
 const skipSrv = createSkipSrv({
