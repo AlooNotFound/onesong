@@ -23,6 +23,33 @@ function getYtDlpBin() {
 }
 
 const YT_DLP_BIN = getYtDlpBin();
+
+function getCookiesPath() {
+    if (process.env.YT_COOKIES_PATH && existsSync(process.env.YT_COOKIES_PATH)) {
+        return process.env.YT_COOKIES_PATH;
+    }
+    const home = os.homedir();
+    const candidates = [
+        path.resolve('cookies.txt'),
+        path.resolve('server/cookies.txt'),
+        path.join(home, 'cookies.txt'),
+        path.join(home, '.config/yt-dlp/cookies.txt'),
+    ];
+    for (const p of candidates) {
+        if (existsSync(p)) return p;
+    }
+    return null;
+}
+
+function getYtDlpExtractorArgs() {
+    const args = ['--extractor-args', 'youtube:player_client=android,ios'];
+    const cookies = getCookiesPath();
+    if (cookies) {
+        args.push('--cookies', cookies);
+    }
+    return args;
+}
+
 const SPAWN_ENV = {
     ...process.env,
     PATH: [
@@ -61,7 +88,17 @@ export async function downloadYtAud({ vidId, videoId, canonicalTrackId, srcUrl }
     const tempPattern = path.join(CACHE_DIR, `${tempPrefix}.%(ext)s`);
     const tempMp3Path = path.join(CACHE_DIR, `${tempPrefix}.mp3`);
 
-    const args = [ '--no-warnings', '--no-playlist', '-x', '--audio-format', 'mp3', '--audio-quality', '0', '--max-filesize', `${MAX_FILE_SIZE}`, '-o', tempPattern, url, ];
+    const args = [
+        '--no-warnings',
+        '--no-playlist',
+        ...getYtDlpExtractorArgs(),
+        '-x',
+        '--audio-format', 'mp3',
+        '--audio-quality', '0',
+        '--max-filesize', `${MAX_FILE_SIZE}`,
+        '-o', tempPattern,
+        url,
+    ];
     try {
         await new Promise((resolve, reject) => {
             const proc = spawn(YT_DLP_BIN, args, { env: SPAWN_ENV });
@@ -110,7 +147,14 @@ export async function downloadYtAud({ vidId, videoId, canonicalTrackId, srcUrl }
 
 export async function extractVIdMeta(vidId) {
     const url = `https://www.youtube.com/watch?v=${vidId}`;
-    const args = [ '--dump-single-json', '--no-warnings', '--skip-download', '--js-runtimes', 'node:node', url, ];
+    const args = [
+        '--dump-single-json',
+        '--no-warnings',
+        '--skip-download',
+        ...getYtDlpExtractorArgs(),
+        '--js-runtimes', 'node:node',
+        url,
+    ];
     return new Promise((resolve, reject) => {
         const proc = spawn(YT_DLP_BIN, args, { env: SPAWN_ENV });
         let stdoutData = '';
@@ -157,6 +201,7 @@ export async function extractPLMeta(playlistId, maxEntries = 500) {
         '--playlist-end', String(maxEntries),
         '--no-warnings',
         '--skip-download',
+        ...getYtDlpExtractorArgs(),
         '--js-runtimes', 'node:node',
         url,
     ];
