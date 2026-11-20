@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build -w client",
+  "outputDirectory": "client/dist",
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://onesong.eryzalabs.cloud/api/:match*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

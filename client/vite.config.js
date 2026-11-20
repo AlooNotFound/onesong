@@ -9,7 +9,7 @@ export default defineConfig({
     // In dev, the React app talks to the Express server through this proxy.
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://localhost:5387',
         changeOrigin: true,
       },
     },
